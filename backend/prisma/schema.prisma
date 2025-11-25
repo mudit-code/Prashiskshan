@@ -35,6 +35,98 @@ model User {
   credits         Credit[]      @relation("StudentCredits")
   issuedCredits   Credit[]      @relation("IssuedBy")
   refreshTokens   RefreshToken[]
+  studentProfile  StudentProfile?
+}
+
+model StudentProfile {
+  id              Int       @id @default(autoincrement())
+  user            User      @relation(fields: [userId], references: [id])
+  userId          Int       @unique
+  firstName       String
+  middleName      String?
+  lastName        String
+  fatherFirstName String
+  fatherMiddleName String?
+  fatherLastName  String
+  motherFirstName String
+  motherMiddleName String?
+  motherLastName  String
+  mobileNumber    String
+  gender          String
+  dob             DateTime
+  address         Address?
+  education       Education[]
+  certifications  Certification[]
+  workExperience  WorkExperience[]
+  socialLinks     SocialLinks?
+  photoUrl        String?
+  signatureUrl    String?
+}
+
+model Address {
+  id              Int            @id @default(autoincrement())
+  studentProfile  StudentProfile @relation(fields: [profileId], references: [id])
+  profileId       Int            @unique
+  houseNo         String
+  locality        String
+  city            String
+  district        String
+  state           String
+  pinCode         String
+}
+
+model Education {
+  id              Int            @id @default(autoincrement())
+  studentProfile  StudentProfile @relation(fields: [profileId], references: [id])
+  profileId       Int
+  level           String         // "10th", "12th", "Graduation", "Post-Graduation"
+  rollNumber      String?
+  yearOfPassing   String
+  boardName       String?
+  schoolName      String?
+  collegeName     String?
+  universityName  String?
+  course          String?
+  branch          String?
+  yearOfAdmission String?
+  cgpaOrPercentage String?
+  marksObtained   Float?
+  maximumMarks    Float?
+  marksheetUrl    String?
+}
+
+model Certification {
+  id              Int            @id @default(autoincrement())
+  studentProfile  StudentProfile @relation(fields: [profileId], references: [id])
+  profileId       Int
+  title           String
+  issuedBy        String
+  issuedOn        DateTime
+  description     String?
+  certificateUrl  String?
+}
+
+model WorkExperience {
+  id              Int            @id @default(autoincrement())
+  studentProfile  StudentProfile @relation(fields: [profileId], references: [id])
+  profileId       Int
+  role            String
+  company         String
+  startDate       DateTime
+  endDate         DateTime?
+  isCurrent       Boolean        @default(false)
+  description     String?
+  experienceLetterUrl String?
+}
+
+model SocialLinks {
+  id              Int            @id @default(autoincrement())
+  studentProfile  StudentProfile @relation(fields: [profileId], references: [id])
+  profileId       Int            @unique
+  linkedin        String?
+  github          String?
+  portfolio       String?
+  other           String?
 }
 
 model Internship {

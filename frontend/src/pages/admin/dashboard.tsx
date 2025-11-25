@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import {
   FaUsers,
@@ -14,11 +15,33 @@ import {
   FaUniversity,
   FaUserCheck,
   FaUserTimes,
-  FaAward
+  FaAward,
+  FaHandshake,
+  FaCheckDouble,
+  FaChartBar,
+  FaSignOutAlt
 } from 'react-icons/fa';
+import { authAPI } from '../../lib/api';
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'applications' | 'reports'>('overview');
+  const router = useRouter();
+  const { tab } = router.query;
+  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'applications' | 'reports' | 'partners' | 'compliance' | 'analytics'>('overview');
+
+  useEffect(() => {
+    if (tab && typeof tab === 'string') {
+      setActiveTab(tab as any);
+    }
+  }, [tab]);
+
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout();
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   // Mock data
   const stats = {
@@ -98,6 +121,12 @@ const AdminDashboard = () => {
                 <p className="text-sm text-green-200">Total Students</p>
                 <p className="text-3xl font-bold">{stats.totalStudents}</p>
               </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
+              >
+                <FaSignOutAlt /> Logout
+              </button>
             </div>
           </div>
         </div>
@@ -141,15 +170,17 @@ const AdminDashboard = () => {
                 { id: 'students', label: 'Students', icon: FaUsers },
                 { id: 'applications', label: 'Pending Applications', icon: FaFileAlt },
                 { id: 'reports', label: 'Reports', icon: FaDownload },
+                { id: 'partners', label: 'Industry Partners', icon: FaHandshake },
+                { id: 'compliance', label: 'NEP Compliance', icon: FaCheckDouble },
+                { id: 'analytics', label: 'Analytics', icon: FaChartBar },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? 'border-green-600 text-green-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
+                    ? 'border-green-600 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
                 >
                   <tab.icon />
                   {tab.label}
@@ -334,6 +365,97 @@ const AdminDashboard = () => {
                     <span>Student Performance Report</span>
                     <FaDownload />
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+
+          {/* Partners Tab */}
+          {activeTab === 'partners' && (
+            <div className="space-y-6">
+              <div className="card flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Industry Partnerships</h3>
+                  <p className="text-gray-600">Manage MoUs and active collaborations.</p>
+                </div>
+                <button className="btn-primary flex items-center gap-2">
+                  <FaHandshake /> Add New Partner
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[
+                  { name: 'Tech Corp', type: 'IT Services', interns: 12, status: 'Active', expiry: '2025-12-31' },
+                  { name: 'Green Energy Ltd', type: 'Renewable Energy', interns: 5, status: 'Active', expiry: '2025-06-30' },
+                  { name: 'City Hospital', type: 'Healthcare', interns: 8, status: 'Pending Renewal', expiry: '2024-12-31' },
+                ].map((partner, idx) => (
+                  <div key={idx} className="card">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h4 className="text-lg font-bold text-gray-900">{partner.name}</h4>
+                        <p className="text-sm text-gray-500">{partner.type}</p>
+                      </div>
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${partner.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {partner.status}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm text-gray-600">
+                      <span>Active Interns: {partner.interns}</span>
+                      <span>MoU Expires: {partner.expiry}</span>
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                      <button className="btn-secondary text-xs w-full">View Details</button>
+                      <button className="btn-secondary text-xs w-full">Renew MoU</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Compliance Tab */}
+          {activeTab === 'compliance' && (
+            <div className="space-y-6">
+              <div className="card bg-violet-50 border-l-4 border-violet-500">
+                <h3 className="text-xl font-bold text-violet-800 mb-2">NEP 2020 Compliance Status</h3>
+                <p className="text-violet-700">Overall Compliance Score: 85%</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[
+                  { label: 'Internship Credits', status: 'Compliant', desc: 'All internships are credit-based.' },
+                  { label: 'Faculty Mentorship', status: 'Partial', desc: '80% students have assigned mentors.' },
+                  { label: 'Digital Logbooks', status: 'Compliant', desc: '100% adoption of digital logs.' },
+                ].map((item, idx) => (
+                  <div key={idx} className="card">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FaCheckDouble className="text-violet-600" />
+                      <h4 className="font-bold text-gray-900">{item.label}</h4>
+                    </div>
+                    <p className={`text-sm font-semibold mb-2 ${item.status === 'Compliant' ? 'text-green-600' : 'text-yellow-600'}`}>
+                      {item.status}
+                    </p>
+                    <p className="text-sm text-gray-600">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Analytics Tab */}
+          {activeTab === 'analytics' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="card">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Internship Placements by Sector</h3>
+                  <div className="h-64 bg-gray-100 rounded flex items-center justify-center text-gray-500">
+                    [Pie Chart Placeholder: IT 40%, Core Eng 30%, Management 20%, Others 10%]
+                  </div>
+                </div>
+                <div className="card">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Skill Gap Analysis</h3>
+                  <div className="h-64 bg-gray-100 rounded flex items-center justify-center text-gray-500">
+                    [Bar Chart Placeholder: Communication (High Gap), Technical (Medium Gap)]
+                  </div>
                 </div>
               </div>
             </div>

@@ -1,0 +1,485 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { FaUser, FaGraduationCap, FaBriefcase, FaIdCard, FaCheck, FaArrowRight, FaArrowLeft, FaUpload } from 'react-icons/fa';
+import axios from 'axios';
+
+interface ProfileFormProps {
+    onComplete: () => void;
+    onSkip: () => void;
+    initialData?: any;
+}
+
+const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialData }) => {
+    const [step, setStep] = useState(1);
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState<any>({
+        personal: {
+            firstName: '', middleName: '', lastName: '',
+            fatherFirstName: '', fatherMiddleName: '', fatherLastName: '',
+            motherFirstName: '', motherMiddleName: '', motherLastName: '',
+            mobileNumber: '', gender: 'Male', dob: '',
+            address: { houseNo: '', locality: '', city: '', district: '', state: '', pinCode: '' }
+        },
+        academic: {
+            tenth: { level: '10th', rollNumber: '', yearOfPassing: '', boardName: '', schoolName: '', marksObtained: '', maximumMarks: '' },
+            twelfth: { level: '12th', rollNumber: '', yearOfPassing: '', boardName: '', schoolName: '', marksObtained: '', maximumMarks: '' },
+            graduation: { level: 'Graduation', collegeName: '', universityName: '', course: '', branch: '', rollNumber: '', yearOfAdmission: '', yearOfPassing: '', cgpaOrPercentage: '' },
+            postGraduation: { level: 'Post-Graduation', collegeName: '', universityName: '', course: '', branch: '', rollNumber: '', yearOfAdmission: '', yearOfPassing: '', cgpaOrPercentage: '' }
+        },
+        experience: {
+            certifications: [],
+            workExperience: []
+        },
+        uploads: {
+            photo: null,
+            signature: null
+        },
+        social: {
+            linkedin: '', github: '', portfolio: '', other: ''
+        }
+    });
+
+    useEffect(() => {
+        if (initialData) {
+            // Map initialData to formData structure
+            const academicMap: any = {
+                tenth: { level: '10th', rollNumber: '', yearOfPassing: '', boardName: '', schoolName: '', marksObtained: '', maximumMarks: '' },
+                twelfth: { level: '12th', rollNumber: '', yearOfPassing: '', boardName: '', schoolName: '', marksObtained: '', maximumMarks: '' },
+                graduation: { level: 'Graduation', collegeName: '', universityName: '', course: '', branch: '', rollNumber: '', yearOfAdmission: '', yearOfPassing: '', cgpaOrPercentage: '' },
+                postGraduation: { level: 'Post-Graduation', collegeName: '', universityName: '', course: '', branch: '', rollNumber: '', yearOfAdmission: '', yearOfPassing: '', cgpaOrPercentage: '' }
+            };
+
+            if (initialData.education && Array.isArray(initialData.education)) {
+                initialData.education.forEach((edu: any) => {
+                    if (edu.level === '10th') academicMap.tenth = { ...academicMap.tenth, ...edu };
+                    else if (edu.level === '12th') academicMap.twelfth = { ...academicMap.twelfth, ...edu };
+                    else if (edu.level === 'Graduation') academicMap.graduation = { ...academicMap.graduation, ...edu };
+                    else if (edu.level === 'Post-Graduation') academicMap.postGraduation = { ...academicMap.postGraduation, ...edu };
+                });
+            }
+
+            setFormData({
+                personal: {
+                    firstName: initialData.firstName || '',
+                    middleName: initialData.middleName || '',
+                    lastName: initialData.lastName || '',
+                    fatherFirstName: initialData.fatherFirstName || '',
+                    fatherMiddleName: initialData.fatherMiddleName || '',
+                    fatherLastName: initialData.fatherLastName || '',
+                    motherFirstName: initialData.motherFirstName || '',
+                    motherMiddleName: initialData.motherMiddleName || '',
+                    motherLastName: initialData.motherLastName || '',
+                    mobileNumber: initialData.mobileNumber || '',
+                    gender: initialData.gender || 'Male',
+                    dob: initialData.dob ? new Date(initialData.dob).toISOString().split('T')[0] : '',
+                    address: initialData.address || { houseNo: '', locality: '', city: '', district: '', state: '', pinCode: '' }
+                },
+                academic: academicMap,
+                experience: {
+                    certifications: initialData.certifications || [],
+                    workExperience: initialData.workExperience || []
+                },
+                uploads: {
+                    photo: null, // Files cannot be pre-populated easily, user has to re-upload if changing
+                    signature: null
+                },
+                social: initialData.socialLinks || { linkedin: '', github: '', portfolio: '', other: '' }
+            });
+        }
+    }, [initialData]);
+
+    const handleInputChange = (section: string, field: string, value: any, subSection?: string) => {
+        if (subSection) {
+            setFormData((prev: any) => ({
+                ...prev,
+                [section]: {
+                    ...prev[section],
+                    [subSection]: { ...prev[section][subSection], [field]: value }
+                }
+            }));
+        } else {
+            setFormData((prev: any) => ({
+                ...prev,
+                [section]: { ...prev[section], [field]: value }
+            }));
+        }
+    };
+
+    const handleFileChange = (section: string, field: string, file: File | null, index?: number, subField?: string) => {
+        if (section === 'uploads') {
+            setFormData((prev: any) => ({
+                ...prev,
+                uploads: { ...prev.uploads, [field]: file }
+            }));
+        } else if (section === 'academic') {
+            // Handle academic files (marksheets) - simplified for now, would need to store in separate state or FormData structure
+            // For this implementation, we'll append to FormData object on submit
+            setFormData((prev: any) => ({
+                ...prev,
+                academic: {
+                    ...prev.academic,
+                    [field]: { ...prev.academic[field], marksheet: file }
+                }
+            }));
+        } else if (section === 'experience') {
+            if (field === 'certifications' && index !== undefined && subField) {
+                const newCerts = [...formData.experience.certifications];
+                newCerts[index] = { ...newCerts[index], [subField]: file };
+                setFormData((prev: any) => ({ ...prev, experience: { ...prev.experience, certifications: newCerts } }));
+            } else if (field === 'workExperience' && index !== undefined && subField) {
+                const newExp = [...formData.experience.workExperience];
+                newExp[index] = { ...newExp[index], [subField]: file };
+                setFormData((prev: any) => ({ ...prev, experience: { ...prev.experience, workExperience: newExp } }));
+            }
+        }
+    };
+
+    const addCertification = () => {
+        setFormData((prev: any) => ({
+            ...prev,
+            experience: {
+                ...prev.experience,
+                certifications: [...prev.experience.certifications, { title: '', issuedBy: '', issuedOn: '', description: '' }]
+            }
+        }));
+    };
+
+    const addWorkExperience = () => {
+        setFormData((prev: any) => ({
+            ...prev,
+            experience: {
+                ...prev.experience,
+                workExperience: [...prev.experience.workExperience, { role: '', company: '', startDate: '', endDate: '', isCurrent: false, description: '' }]
+            }
+        }));
+    };
+
+    const handleSubmit = async () => {
+        setLoading(true);
+        try {
+            const data = new FormData();
+
+            // Personal
+            Object.keys(formData.personal).forEach(key => {
+                if (key === 'address') {
+                    data.append('address', JSON.stringify(formData.personal.address));
+                } else {
+                    data.append(key, formData.personal[key]);
+                }
+            });
+
+            // Academic (Flatten and append)
+            const education = [
+                formData.academic.tenth,
+                formData.academic.twelfth,
+                formData.academic.graduation,
+                formData.academic.postGraduation
+            ].filter(e => e.rollNumber || e.collegeName); // Simple filter to check if filled
+
+            data.append('education', JSON.stringify(education.map(({ marksheet, ...rest }) => rest)));
+
+            // Append academic files
+            if (formData.academic.tenth.marksheet) data.append('education_0_marksheet', formData.academic.tenth.marksheet);
+            if (formData.academic.twelfth.marksheet) data.append('education_1_marksheet', formData.academic.twelfth.marksheet);
+            if (formData.academic.graduation.marksheet) data.append('education_2_marksheet', formData.academic.graduation.marksheet);
+            if (formData.academic.postGraduation.marksheet) data.append('education_3_marksheet', formData.academic.postGraduation.marksheet);
+
+            // Experience
+            data.append('certifications', JSON.stringify(formData.experience.certifications.map(({ certificate, ...rest }: any) => rest)));
+            formData.experience.certifications.forEach((cert: any, index: number) => {
+                if (cert.certificate) data.append(`certification_${index}_certificate`, cert.certificate);
+            });
+
+            data.append('workExperience', JSON.stringify(formData.experience.workExperience.map(({ experienceLetter, ...rest }: any) => rest)));
+            formData.experience.workExperience.forEach((exp: any, index: number) => {
+                if (exp.experienceLetter) data.append(`experience_${index}_letter`, exp.experienceLetter);
+            });
+
+            // Social
+            data.append('socialLinks', JSON.stringify(formData.social));
+
+            // Uploads
+            if (formData.uploads.photo) data.append('photo', formData.uploads.photo);
+            if (formData.uploads.signature) data.append('signature', formData.uploads.signature);
+
+            const token = localStorage.getItem('token'); // Assuming token is stored here
+            await axios.post('http://localhost:5000/api/student/profile', data, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            onComplete();
+        } catch (error: any) {
+            console.error('Error submitting profile:', error);
+            const errorMessage = error.response?.data?.error || error.message || 'Failed to save profile. Please try again.';
+            alert(`Error: ${errorMessage}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const renderStep1 = () => (
+        <div className="space-y-6">
+            <h3 className="text-xl font-bold">Personal Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input type="text" placeholder="First Name" className="input-field" value={formData.personal.firstName} onChange={(e) => handleInputChange('personal', 'firstName', e.target.value)} />
+                <input type="text" placeholder="Middle Name" className="input-field" value={formData.personal.middleName} onChange={(e) => handleInputChange('personal', 'middleName', e.target.value)} />
+                <input type="text" placeholder="Last Name" className="input-field" value={formData.personal.lastName} onChange={(e) => handleInputChange('personal', 'lastName', e.target.value)} />
+            </div>
+
+            <h4 className="font-semibold">Father's Details</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input type="text" placeholder="First Name" className="input-field" value={formData.personal.fatherFirstName} onChange={(e) => handleInputChange('personal', 'fatherFirstName', e.target.value)} />
+                <input type="text" placeholder="Middle Name" className="input-field" value={formData.personal.fatherMiddleName} onChange={(e) => handleInputChange('personal', 'fatherMiddleName', e.target.value)} />
+                <input type="text" placeholder="Last Name" className="input-field" value={formData.personal.fatherLastName} onChange={(e) => handleInputChange('personal', 'fatherLastName', e.target.value)} />
+            </div>
+
+            <h4 className="font-semibold">Mother's Details</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input type="text" placeholder="First Name" className="input-field" value={formData.personal.motherFirstName} onChange={(e) => handleInputChange('personal', 'motherFirstName', e.target.value)} />
+                <input type="text" placeholder="Middle Name" className="input-field" value={formData.personal.motherMiddleName} onChange={(e) => handleInputChange('personal', 'motherMiddleName', e.target.value)} />
+                <input type="text" placeholder="Last Name" className="input-field" value={formData.personal.motherLastName} onChange={(e) => handleInputChange('personal', 'motherLastName', e.target.value)} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" placeholder="Mobile Number" className="input-field" value={formData.personal.mobileNumber} onChange={(e) => handleInputChange('personal', 'mobileNumber', e.target.value)} />
+                <select className="input-field" value={formData.personal.gender} onChange={(e) => handleInputChange('personal', 'gender', e.target.value)}>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                </select>
+                <input type="date" className="input-field" value={formData.personal.dob} onChange={(e) => handleInputChange('personal', 'dob', e.target.value)} />
+            </div>
+
+            <h4 className="font-semibold">Address</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" placeholder="House No. / Street" className="input-field" value={formData.personal.address.houseNo} onChange={(e) => handleInputChange('personal', 'houseNo', e.target.value, 'address')} />
+                <input type="text" placeholder="Locality / Area" className="input-field" value={formData.personal.address.locality} onChange={(e) => handleInputChange('personal', 'locality', e.target.value, 'address')} />
+                <input type="text" placeholder="City" className="input-field" value={formData.personal.address.city} onChange={(e) => handleInputChange('personal', 'city', e.target.value, 'address')} />
+                <input type="text" placeholder="District" className="input-field" value={formData.personal.address.district} onChange={(e) => handleInputChange('personal', 'district', e.target.value, 'address')} />
+                <input type="text" placeholder="State" className="input-field" value={formData.personal.address.state} onChange={(e) => handleInputChange('personal', 'state', e.target.value, 'address')} />
+                <input type="text" placeholder="PIN Code" className="input-field" value={formData.personal.address.pinCode} onChange={(e) => handleInputChange('personal', 'pinCode', e.target.value, 'address')} />
+            </div>
+        </div>
+    );
+
+    const renderStep2 = () => (
+        <div className="space-y-6">
+            <h3 className="text-xl font-bold">Academic Details</h3>
+
+            {/* 10th */}
+            <div className="border p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">10th (High School)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="text" placeholder="Roll Number" className="input-field" value={formData.academic.tenth.rollNumber} onChange={(e) => handleInputChange('academic', 'rollNumber', e.target.value, 'tenth')} />
+                    <input type="text" placeholder="Year of Passing" className="input-field" value={formData.academic.tenth.yearOfPassing} onChange={(e) => handleInputChange('academic', 'yearOfPassing', e.target.value, 'tenth')} />
+                    <input type="text" placeholder="Board Name" className="input-field" value={formData.academic.tenth.boardName} onChange={(e) => handleInputChange('academic', 'boardName', e.target.value, 'tenth')} />
+                    <input type="text" placeholder="School Name" className="input-field" value={formData.academic.tenth.schoolName} onChange={(e) => handleInputChange('academic', 'schoolName', e.target.value, 'tenth')} />
+                    <input type="number" placeholder="Marks Obtained" className="input-field" value={formData.academic.tenth.marksObtained} onChange={(e) => handleInputChange('academic', 'marksObtained', e.target.value, 'tenth')} />
+                    <input type="number" placeholder="Maximum Marks" className="input-field" value={formData.academic.tenth.maximumMarks} onChange={(e) => handleInputChange('academic', 'maximumMarks', e.target.value, 'tenth')} />
+                    <div className="col-span-3">
+                        <label className="block text-sm font-medium text-gray-700">Upload Marksheet</label>
+                        <input type="file" className="input-field" onChange={(e) => handleFileChange('academic', 'tenth', e.target.files?.[0] || null)} />
+                    </div>
+                </div>
+            </div>
+
+            {/* 12th */}
+            <div className="border p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">12th (Intermediate)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="text" placeholder="Roll Number" className="input-field" value={formData.academic.twelfth.rollNumber} onChange={(e) => handleInputChange('academic', 'rollNumber', e.target.value, 'twelfth')} />
+                    <input type="text" placeholder="Year of Passing" className="input-field" value={formData.academic.twelfth.yearOfPassing} onChange={(e) => handleInputChange('academic', 'yearOfPassing', e.target.value, 'twelfth')} />
+                    <input type="text" placeholder="Board Name" className="input-field" value={formData.academic.twelfth.boardName} onChange={(e) => handleInputChange('academic', 'boardName', e.target.value, 'twelfth')} />
+                    <input type="text" placeholder="School Name" className="input-field" value={formData.academic.twelfth.schoolName} onChange={(e) => handleInputChange('academic', 'schoolName', e.target.value, 'twelfth')} />
+                    <input type="number" placeholder="Marks Obtained" className="input-field" value={formData.academic.twelfth.marksObtained} onChange={(e) => handleInputChange('academic', 'marksObtained', e.target.value, 'twelfth')} />
+                    <input type="number" placeholder="Maximum Marks" className="input-field" value={formData.academic.twelfth.maximumMarks} onChange={(e) => handleInputChange('academic', 'maximumMarks', e.target.value, 'twelfth')} />
+                    <div className="col-span-3">
+                        <label className="block text-sm font-medium text-gray-700">Upload Marksheet</label>
+                        <input type="file" className="input-field" onChange={(e) => handleFileChange('academic', 'twelfth', e.target.files?.[0] || null)} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Graduation */}
+            <div className="border p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">Graduation</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="text" placeholder="College Name" className="input-field" value={formData.academic.graduation.collegeName} onChange={(e) => handleInputChange('academic', 'collegeName', e.target.value, 'graduation')} />
+                    <input type="text" placeholder="University Name" className="input-field" value={formData.academic.graduation.universityName} onChange={(e) => handleInputChange('academic', 'universityName', e.target.value, 'graduation')} />
+                    <input type="text" placeholder="Course / Degree" className="input-field" value={formData.academic.graduation.course} onChange={(e) => handleInputChange('academic', 'course', e.target.value, 'graduation')} />
+                    <input type="text" placeholder="Branch" className="input-field" value={formData.academic.graduation.branch} onChange={(e) => handleInputChange('academic', 'branch', e.target.value, 'graduation')} />
+                    <input type="text" placeholder="Roll Number" className="input-field" value={formData.academic.graduation.rollNumber} onChange={(e) => handleInputChange('academic', 'rollNumber', e.target.value, 'graduation')} />
+                    <input type="text" placeholder="Year of Admission" className="input-field" value={formData.academic.graduation.yearOfAdmission} onChange={(e) => handleInputChange('academic', 'yearOfAdmission', e.target.value, 'graduation')} />
+                    <input type="text" placeholder="Year of Passing" className="input-field" value={formData.academic.graduation.yearOfPassing} onChange={(e) => handleInputChange('academic', 'yearOfPassing', e.target.value, 'graduation')} />
+                    <input type="text" placeholder="CGPA / Percentage" className="input-field" value={formData.academic.graduation.cgpaOrPercentage} onChange={(e) => handleInputChange('academic', 'cgpaOrPercentage', e.target.value, 'graduation')} />
+                    <div className="col-span-3">
+                        <label className="block text-sm font-medium text-gray-700">Upload Marksheet</label>
+                        <input type="file" className="input-field" onChange={(e) => handleFileChange('academic', 'graduation', e.target.files?.[0] || null)} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderStep3 = () => (
+        <div className="space-y-6">
+            <h3 className="text-xl font-bold">Skills & Experience</h3>
+
+            <div>
+                <div className="flex justify-between items-center mb-2">
+                    <h4 className="font-semibold">Certifications</h4>
+                    <button onClick={addCertification} className="text-sm text-primary-600">+ Add Certification</button>
+                </div>
+                {formData.experience.certifications.map((cert: any, index: number) => (
+                    <div key={index} className="border p-4 rounded-lg mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" placeholder="Certificate Title" className="input-field" value={cert.title} onChange={(e) => {
+                                const newCerts = [...formData.experience.certifications];
+                                newCerts[index].title = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, experience: { ...prev.experience, certifications: newCerts } }));
+                            }} />
+                            <input type="text" placeholder="Issued By" className="input-field" value={cert.issuedBy} onChange={(e) => {
+                                const newCerts = [...formData.experience.certifications];
+                                newCerts[index].issuedBy = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, experience: { ...prev.experience, certifications: newCerts } }));
+                            }} />
+                            <input type="date" className="input-field" value={cert.issuedOn} onChange={(e) => {
+                                const newCerts = [...formData.experience.certifications];
+                                newCerts[index].issuedOn = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, experience: { ...prev.experience, certifications: newCerts } }));
+                            }} />
+                            <input type="file" className="input-field" onChange={(e) => handleFileChange('experience', 'certifications', e.target.files?.[0] || null, index, 'certificate')} />
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div>
+                <div className="flex justify-between items-center mb-2">
+                    <h4 className="font-semibold">Work Experience</h4>
+                    <button onClick={addWorkExperience} className="text-sm text-primary-600">+ Add Experience</button>
+                </div>
+                {formData.experience.workExperience.map((exp: any, index: number) => (
+                    <div key={index} className="border p-4 rounded-lg mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" placeholder="Role" className="input-field" value={exp.role} onChange={(e) => {
+                                const newExp = [...formData.experience.workExperience];
+                                newExp[index].role = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, experience: { ...prev.experience, workExperience: newExp } }));
+                            }} />
+                            <input type="text" placeholder="Company" className="input-field" value={exp.company} onChange={(e) => {
+                                const newExp = [...formData.experience.workExperience];
+                                newExp[index].company = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, experience: { ...prev.experience, workExperience: newExp } }));
+                            }} />
+                            <input type="date" placeholder="Start Date" className="input-field" value={exp.startDate} onChange={(e) => {
+                                const newExp = [...formData.experience.workExperience];
+                                newExp[index].startDate = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, experience: { ...prev.experience, workExperience: newExp } }));
+                            }} />
+                            <input type="date" placeholder="End Date" className="input-field" value={exp.endDate} onChange={(e) => {
+                                const newExp = [...formData.experience.workExperience];
+                                newExp[index].endDate = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, experience: { ...prev.experience, workExperience: newExp } }));
+                            }} />
+                            <input type="file" className="input-field" onChange={(e) => handleFileChange('experience', 'workExperience', e.target.files?.[0] || null, index, 'experienceLetter')} />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
+    const renderStep4 = () => (
+        <div className="space-y-6">
+            <h3 className="text-xl font-bold">Photo & Signature</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <FaUser className="text-4xl text-gray-400 mx-auto mb-2" />
+                    <p className="mb-2">Upload Photo</p>
+                    <input type="file" onChange={(e) => handleFileChange('uploads', 'photo', e.target.files?.[0] || null)} />
+                </div>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <FaIdCard className="text-4xl text-gray-400 mx-auto mb-2" />
+                    <p className="mb-2">Upload Signature</p>
+                    <input type="file" onChange={(e) => handleFileChange('uploads', 'signature', e.target.files?.[0] || null)} />
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderStep5 = () => (
+        <div className="space-y-6">
+            <h3 className="text-xl font-bold">Digital Identity</h3>
+            <div className="grid grid-cols-1 gap-4">
+                <input type="text" placeholder="LinkedIn Profile URL" className="input-field" value={formData.social.linkedin} onChange={(e) => handleInputChange('social', 'linkedin', e.target.value)} />
+                <input type="text" placeholder="GitHub Profile URL" className="input-field" value={formData.social.github} onChange={(e) => handleInputChange('social', 'github', e.target.value)} />
+                <input type="text" placeholder="Portfolio URL" className="input-field" value={formData.social.portfolio} onChange={(e) => handleInputChange('social', 'portfolio', e.target.value)} />
+                <input type="text" placeholder="Other Link" className="input-field" value={formData.social.other} onChange={(e) => handleInputChange('social', 'other', e.target.value)} />
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-10">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white rounded-xl shadow-2xl w-full max-w-4xl p-6 md:p-8 relative"
+            >
+                <button onClick={onSkip} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700">Skip for now</button>
+
+                <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                            <div key={s} className={`flex flex-col items-center ${s <= step ? 'text-primary-600' : 'text-gray-400'}`}>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${s <= step ? 'bg-primary-100 font-bold' : 'bg-gray-100'}`}>
+                                    {s < step ? <FaCheck /> : s}
+                                </div>
+                                <span className="text-xs hidden md:block">
+                                    {s === 1 ? 'Personal' : s === 2 ? 'Academic' : s === 3 ? 'Experience' : s === 4 ? 'Uploads' : 'Social'}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="w-full bg-gray-200 h-2 rounded-full">
+                        <div className="bg-primary-600 h-2 rounded-full transition-all duration-300" style={{ width: `${(step / 5) * 100}%` }}></div>
+                    </div>
+                </div>
+
+                <div className="mb-8 max-h-[60vh] overflow-y-auto pr-2">
+                    {step === 1 && renderStep1()}
+                    {step === 2 && renderStep2()}
+                    {step === 3 && renderStep3()}
+                    {step === 4 && renderStep4()}
+                    {step === 5 && renderStep5()}
+                </div>
+
+                <div className="flex justify-between">
+                    <button
+                        onClick={() => setStep(s => Math.max(1, s - 1))}
+                        disabled={step === 1}
+                        className={`btn-secondary flex items-center gap-2 ${step === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        <FaArrowLeft /> Previous
+                    </button>
+
+                    {step < 5 ? (
+                        <button onClick={() => setStep(s => Math.min(5, s + 1))} className="btn-primary flex items-center gap-2">
+                            Next <FaArrowRight />
+                        </button>
+                    ) : (
+                        <button onClick={handleSubmit} disabled={loading} className="btn-primary flex items-center gap-2">
+                            {loading ? 'Saving...' : 'Complete Profile'} <FaCheck />
+                        </button>
+                    )}
+                </div>
+            </motion.div>
+        </div>
+    );
+};
+
+export default ProfileForm;

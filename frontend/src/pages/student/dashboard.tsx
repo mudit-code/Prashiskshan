@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import {
   FaBriefcase,
@@ -13,18 +14,50 @@ import {
   FaBook,
   FaGraduationCap,
   FaAward,
-  FaSpinner
+  FaSpinner,
+  FaBookReader,
+  FaChalkboardTeacher,
+  FaVideo,
+  FaCalendarAlt,
+  FaCalendarAlt,
+  FaSignOutAlt,
+  FaUser
 } from 'react-icons/fa';
-import { internshipsAPI, applicationsAPI, logbooksAPI } from '../../lib/api';
+import { internshipsAPI, applicationsAPI, logbooksAPI, authAPI } from '../../lib/api';
 import withAuth from '../../components/withAuth';
+import ProfileForm from '../../components/student/ProfileForm';
+import ResumeView from '../../components/student/ResumeView';
+import axios from 'axios';
 
 const StudentDashboard = ({ userId, role }: { userId: string; role: string }) => {
-  const [activeTab, setActiveTab] = useState<'opportunities' | 'applications' | 'certificates' | 'logbook'>('opportunities');
+  const router = useRouter();
+  const { tab } = router.query;
+  const [activeTab, setActiveTab] = useState<'opportunities' | 'applications' | 'certificates' | 'logbook' | 'skills' | 'mentorship'>('opportunities');
+
+  useEffect(() => {
+    if (tab && typeof tab === 'string') {
+      setActiveTab(tab as any);
+    }
+  }, [tab]);
+
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout();
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
   const [loading, setLoading] = useState(true);
   const [opportunities, setOpportunities] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
   const [logbooks, setLogbooks] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showProfileForm, setShowProfileForm] = useState(false);
+  const [showResumeView, setShowResumeView] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
     fetchData();
@@ -47,6 +80,24 @@ const StudentDashboard = ({ userId, role }: { userId: string; role: string }) =>
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get('http://localhost:5000/api/student/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProfile(res.data);
+    } catch (error) {
+      console.log('Profile not found or error fetching');
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -86,12 +137,70 @@ const StudentDashboard = ({ userId, role }: { userId: string; role: string }) =>
                 <p className="text-sm text-primary-200">Total Credits Earned</p>
                 <p className="text-3xl font-bold">{stats.totalCredits}</p>
               </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
+              >
+                <FaSignOutAlt /> Logout
+              </button>
             </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Profile Section */}
+        {!profileLoading && (
+          <div className="mb-8">
+            {!profile ? (
+              <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500 flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">Complete Your Profile</h3>
+                  <p className="text-gray-600">Your profile is incomplete. Complete it to apply for internships.</p>
+                </div>
+                <button onClick={() => setShowProfileForm(true)} className="btn-primary">
+                  Complete Profile
+                </button>
+              </div>
+            ) : (
+              <div onClick={() => setShowResumeView(true)} className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500 cursor-pointer hover:shadow-lg transition-shadow flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                  {profile.photoUrl ? (
+                    <img src={`http://localhost:5000${profile.photoUrl}`} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <FaUser className="text-2xl text-gray-400" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">{profile.firstName} {profile.lastName}</h3>
+                  <p className="text-gray-600">Click to view your digital resume</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {showProfileForm && (
+          <ProfileForm
+            initialData={profile}
+            onComplete={() => {
+              setShowProfileForm(false);
+              fetchProfile();
+            }}
+            onSkip={() => setShowProfileForm(false)}
+          />
+        )}
+
+        {showResumeView && profile && (
+          <ResumeView
+            profile={profile}
+            onClose={() => setShowResumeView(false)}
+            onEdit={() => {
+              setShowResumeView(false);
+              setShowProfileForm(true);
+            }}
+          />
+        )}
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           {[
@@ -129,15 +238,16 @@ const StudentDashboard = ({ userId, role }: { userId: string; role: string }) =>
                 { id: 'applications', label: 'My Applications', icon: FaFileAlt },
                 { id: 'certificates', label: 'Certificates', icon: FaCertificate },
                 { id: 'logbook', label: 'Logbook', icon: FaBook },
+                { id: 'skills', label: 'Skill Center', icon: FaBookReader },
+                { id: 'mentorship', label: 'Mentorship', icon: FaChalkboardTeacher },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-primary-600 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors ${activeTab === tab.id
+                    ? 'border-primary-600 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
                 >
                   <tab.icon />
                   {tab.label}
@@ -241,13 +351,12 @@ const StudentDashboard = ({ userId, role }: { userId: string; role: string }) =>
                           </div>
                           <div className="flex items-center gap-4">
                             <span
-                              className={`px-4 py-2 rounded-full text-sm font-semibold ${
-                                app.status === 'Accepted'
-                                  ? 'bg-green-100 text-green-700'
-                                  : app.status === 'Rejected'
+                              className={`px-4 py-2 rounded-full text-sm font-semibold ${app.status === 'Accepted'
+                                ? 'bg-green-100 text-green-700'
+                                : app.status === 'Rejected'
                                   ? 'bg-red-100 text-red-700'
                                   : 'bg-yellow-100 text-yellow-700'
-                              }`}
+                                }`}
                             >
                               {app.status}
                             </span>
@@ -343,6 +452,85 @@ const StudentDashboard = ({ userId, role }: { userId: string; role: string }) =>
                     <button className="btn-primary">
                       <FaDownload /> Generate Report
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Skills Tab */}
+              {activeTab === 'skills' && (
+                <div className="space-y-6">
+                  <div className="card bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-500">
+                    <h3 className="text-xl font-bold text-yellow-800 mb-2">Skill Readiness Program</h3>
+                    <p className="text-yellow-700">Complete these modules to improve your internship chances.</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {[
+                      { title: 'Professional Communication', progress: 80, total: 10, completed: 8 },
+                      { title: 'Technical Interview Prep', progress: 40, total: 15, completed: 6 },
+                      { title: 'Workplace Etiquette', progress: 0, total: 5, completed: 0 },
+                      { title: 'Resume Building', progress: 100, total: 4, completed: 4 },
+                    ].map((skill, idx) => (
+                      <div key={idx} className="card">
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="font-bold text-gray-800">{skill.title}</h4>
+                          <span className="text-sm text-gray-500">{skill.completed}/{skill.total} Modules</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+                          <div className="bg-yellow-500 h-2.5 rounded-full" style={{ width: `${skill.progress}%` }}></div>
+                        </div>
+                        <button className="btn-primary w-full text-sm">
+                          {skill.progress === 100 ? 'Review' : skill.progress === 0 ? 'Start' : 'Continue'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Mentorship Tab */}
+              {activeTab === 'mentorship' && (
+                <div className="space-y-6">
+                  <div className="card">
+                    <h3 className="text-xl font-bold text-gray-900 mb-6">My Mentor</h3>
+                    <div className="flex flex-col md:flex-row items-start gap-6">
+                      <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center">
+                        <FaChalkboardTeacher className="text-4xl text-gray-400" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-lg font-bold">Dr. Sarah Johnson</h4>
+                        <p className="text-gray-600 mb-2">Department of Computer Science</p>
+                        <p className="text-sm text-gray-500 mb-4">
+                          "I am here to guide you through your internship journey. Feel free to reach out for career advice or project help."
+                        </p>
+                        <div className="flex gap-3">
+                          <button className="btn-primary flex items-center gap-2">
+                            <FaVideo /> Schedule Meeting
+                          </button>
+                          <button className="btn-secondary flex items-center gap-2">
+                            <FaCalendarAlt /> View Schedule
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="card">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">Mentorship Sessions</h3>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200 flex justify-between items-center">
+                        <div>
+                          <p className="font-semibold">Internship Report Review</p>
+                          <p className="text-xs text-gray-500">Tomorrow, 10:00 AM</p>
+                        </div>
+                        <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">Upcoming</span>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded border border-gray-200 flex justify-between items-center">
+                        <div>
+                          <p className="font-semibold">Career Guidance</p>
+                          <p className="text-xs text-gray-500">Last Week</p>
+                        </div>
+                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">Completed</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

@@ -1,10 +1,10 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { 
-  FaGraduationCap, 
-  FaBriefcase, 
-  FaChartLine, 
+import {
+  FaGraduationCap,
+  FaBriefcase,
+  FaChartLine,
   FaCertificate,
   FaArrowRight,
   FaRocket,
@@ -76,7 +76,7 @@ const HomePage = () => {
               Empower Your Potential
             </p>
             <p className="text-lg md:text-xl mb-12 max-w-3xl mx-auto opacity-90">
-              Connect students with the best internship opportunities. 
+              Connect students with the best internship opportunities.
               Get recognized, earn credits, and build your future career.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -166,7 +166,7 @@ const HomePage = () => {
               <Link href="/register" className="btn-primary bg-white text-primary-600 hover:bg-gray-100 text-lg px-8 py-4">
                 Create Account
               </Link>
-              <Link href="/login" className="btn-secondary border-white text-white hover:bg-white/10 text-lg px-8 py-4">
+              <Link href="/login" className="px-8 py-4 rounded-lg font-semibold border-2 border-white text-white hover:bg-white/10 transition-all duration-200 shadow-md hover:shadow-lg text-lg">
                 Login
               </Link>
             </div>
