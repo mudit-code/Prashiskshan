@@ -66,18 +66,22 @@ export const createOrUpdateProfile = async (req: Request, res: Response) => {
         };
 
         // Handle file uploads
-        const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+        const files = req.files as Express.Multer.File[] | undefined;
 
-        if (files) {
-            if (files['photo']?.[0]) parsedData.photoUrl = `/uploads/${files['photo'][0].filename}`;
-            if (files['signature']?.[0]) parsedData.signatureUrl = `/uploads/${files['signature'][0].filename}`;
+        if (files && Array.isArray(files)) {
+            const photoFile = files.find(f => f.fieldname === 'photo');
+            if (photoFile) parsedData.photoUrl = `/uploads/${photoFile.filename}`;
+
+            const signatureFile = files.find(f => f.fieldname === 'signature');
+            if (signatureFile) parsedData.signatureUrl = `/uploads/${signatureFile.filename}`;
 
             // Handle education files
             if (parsedData.education && Array.isArray(parsedData.education)) {
                 parsedData.education = parsedData.education.map((edu: any, index: number) => {
                     const fileKey = `education_${index}_marksheet`;
-                    if (files[fileKey]?.[0]) {
-                        return { ...edu, marksheetUrl: `/uploads/${files[fileKey][0].filename}` };
+                    const file = files.find(f => f.fieldname === fileKey);
+                    if (file) {
+                        return { ...edu, marksheetUrl: `/uploads/${file.filename}` };
                     }
                     return edu;
                 });
@@ -87,8 +91,9 @@ export const createOrUpdateProfile = async (req: Request, res: Response) => {
             if (parsedData.certifications && Array.isArray(parsedData.certifications)) {
                 parsedData.certifications = parsedData.certifications.map((cert: any, index: number) => {
                     const fileKey = `certification_${index}_certificate`;
-                    if (files[fileKey]?.[0]) {
-                        return { ...cert, certificateUrl: `/uploads/${files[fileKey][0].filename}` };
+                    const file = files.find(f => f.fieldname === fileKey);
+                    if (file) {
+                        return { ...cert, certificateUrl: `/uploads/${file.filename}` };
                     }
                     return cert;
                 });
@@ -98,8 +103,9 @@ export const createOrUpdateProfile = async (req: Request, res: Response) => {
             if (parsedData.workExperience && Array.isArray(parsedData.workExperience)) {
                 parsedData.workExperience = parsedData.workExperience.map((exp: any, index: number) => {
                     const fileKey = `experience_${index}_letter`;
-                    if (files[fileKey]?.[0]) {
-                        return { ...exp, experienceLetterUrl: `/uploads/${files[fileKey][0].filename}` };
+                    const file = files.find(f => f.fieldname === fileKey);
+                    if (file) {
+                        return { ...exp, experienceLetterUrl: `/uploads/${file.filename}` };
                     }
                     return exp;
                 });
