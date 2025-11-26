@@ -22,7 +22,11 @@
   "include": [
     "src/**/*",
     "prisma/seed.ts",
-    "check_roles.ts"
+    "check_roles.ts",
+    "count_users.ts",
+    "check_tokens.ts",
+    "reproduce_issue.ts",
+    "test_profile_fix.ts"
   ],
   "exclude": [
     "node_modules",

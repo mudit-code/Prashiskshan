@@ -40,9 +40,10 @@ export const createOrUpdateProfile = async (req: Request, res: Response) => {
             ...data,
             dob: data.dob ? new Date(data.dob) : undefined,
             education: typeof data.education === 'string' ? JSON.parse(data.education).map((e: any) => {
-                const { id, profileId, marksheet, ...rest } = e;
+                const { id, profileId, marksheet, percentage, ...rest } = e;
                 return {
                     ...rest,
+                    cgpaOrPercentage: e.cgpaOrPercentage || percentage,
                     marksObtained: e.marksObtained ? parseFloat(e.marksObtained) : null,
                     maximumMarks: e.maximumMarks ? parseFloat(e.maximumMarks) : null,
                 };
@@ -113,82 +114,121 @@ export const createOrUpdateProfile = async (req: Request, res: Response) => {
         }
 
         // Upsert profile
+        // Construct update and create objects
+        // Upsert profile
+        const updateData: any = {
+            firstName: parsedData.firstName,
+            middleName: parsedData.middleName,
+            lastName: parsedData.lastName,
+            fatherFirstName: parsedData.fatherFirstName,
+            fatherMiddleName: parsedData.fatherMiddleName,
+            fatherLastName: parsedData.fatherLastName,
+            motherFirstName: parsedData.motherFirstName,
+            motherMiddleName: parsedData.motherMiddleName,
+            motherLastName: parsedData.motherLastName,
+            mobileNumber: parsedData.mobileNumber,
+            gender: parsedData.gender,
+            dob: parsedData.dob,
+            photoUrl: parsedData.photoUrl,
+            signatureUrl: parsedData.signatureUrl,
+            isCompleted: parsedData.isCompleted === 'true' || parsedData.isCompleted === true,
+            // For arrays (education, certifications, workExperience), we'll delete and recreate for simplicity
+            education: {
+                deleteMany: {},
+                create: parsedData.education,
+            },
+            certifications: {
+                deleteMany: {},
+                create: parsedData.certifications,
+            },
+            workExperience: {
+                deleteMany: {},
+                create: parsedData.workExperience,
+            },
+        };
+
+        const createData: any = {
+            userId,
+            firstName: parsedData.firstName,
+            middleName: parsedData.middleName,
+            lastName: parsedData.lastName,
+            fatherFirstName: parsedData.fatherFirstName,
+            fatherMiddleName: parsedData.fatherMiddleName,
+            fatherLastName: parsedData.fatherLastName,
+            motherFirstName: parsedData.motherFirstName,
+            motherMiddleName: parsedData.motherMiddleName,
+            motherLastName: parsedData.motherLastName,
+            mobileNumber: parsedData.mobileNumber,
+            gender: parsedData.gender,
+            dob: parsedData.dob,
+            photoUrl: parsedData.photoUrl,
+            signatureUrl: parsedData.signatureUrl,
+            isCompleted: parsedData.isCompleted === 'true' || parsedData.isCompleted === true,
+            education: {
+                create: parsedData.education,
+            },
+            certifications: {
+                create: parsedData.certifications,
+            },
+            workExperience: {
+                create: parsedData.workExperience,
+            },
+        };
+
+        // Validate mandatory fields if marking as completed
+        if (parsedData.isCompleted === 'true' || parsedData.isCompleted === true) {
+            const mandatoryFields = [
+                'firstName', 'lastName', 'mobileNumber', 'dob', 'gender',
+                'fatherFirstName', 'fatherLastName', 'motherFirstName', 'motherLastName'
+            ];
+            const missingFields = mandatoryFields.filter(field => !parsedData[field]);
+
+            if (missingFields.length > 0) {
+                return res.status(400).json({ error: `Missing mandatory fields: ${missingFields.join(', ')}` });
+            }
+
+            if (!parsedData.address || !parsedData.address.city || !parsedData.address.state || !parsedData.address.pinCode) {
+                return res.status(400).json({ error: 'Address (City, State, PIN Code) is mandatory' });
+            }
+
+            // Check 10th details
+            const tenth = parsedData.education.find((e: any) => e.level === '10th');
+            if (!tenth || !tenth.yearOfPassing || !tenth.boardName || !tenth.marksObtained || !tenth.maximumMarks) {
+                return res.status(400).json({ error: '10th Standard details are mandatory' });
+            }
+        }
+
+        // Conditionally add address if present
+        if (parsedData.address) {
+            updateData.address = {
+                upsert: {
+                    create: parsedData.address,
+                    update: parsedData.address,
+                },
+            };
+            createData.address = {
+                create: parsedData.address,
+            };
+        }
+
+        // Conditionally add socialLinks if present
+        if (parsedData.socialLinks) {
+            updateData.socialLinks = {
+                upsert: {
+                    create: parsedData.socialLinks,
+                    update: parsedData.socialLinks,
+                },
+            };
+            createData.socialLinks = {
+                create: parsedData.socialLinks,
+            };
+        }
+
+        // Upsert profile
         const profile = await prisma.studentProfile.upsert({
             where: { userId },
-            update: {
-                firstName: parsedData.firstName,
-                middleName: parsedData.middleName,
-                lastName: parsedData.lastName,
-                fatherFirstName: parsedData.fatherFirstName,
-                fatherMiddleName: parsedData.fatherMiddleName,
-                fatherLastName: parsedData.fatherLastName,
-                motherFirstName: parsedData.motherFirstName,
-                motherMiddleName: parsedData.motherMiddleName,
-                motherLastName: parsedData.motherLastName,
-                mobileNumber: parsedData.mobileNumber,
-                gender: parsedData.gender,
-                dob: parsedData.dob,
-                photoUrl: parsedData.photoUrl,
-                signatureUrl: parsedData.signatureUrl,
-                address: {
-                    upsert: {
-                        create: parsedData.address,
-                        update: parsedData.address,
-                    },
-                },
-                socialLinks: {
-                    upsert: {
-                        create: parsedData.socialLinks,
-                        update: parsedData.socialLinks,
-                    },
-                },
-                // For arrays (education, certifications, workExperience), we'll delete and recreate for simplicity in this iteration
-                // A better approach would be to update existing records by ID
-                education: {
-                    deleteMany: {},
-                    create: parsedData.education,
-                },
-                certifications: {
-                    deleteMany: {},
-                    create: parsedData.certifications,
-                },
-                workExperience: {
-                    deleteMany: {},
-                    create: parsedData.workExperience,
-                },
-            },
-            create: {
-                userId,
-                firstName: parsedData.firstName,
-                middleName: parsedData.middleName,
-                lastName: parsedData.lastName,
-                fatherFirstName: parsedData.fatherFirstName,
-                fatherMiddleName: parsedData.fatherMiddleName,
-                fatherLastName: parsedData.fatherLastName,
-                motherFirstName: parsedData.motherFirstName,
-                motherMiddleName: parsedData.motherMiddleName,
-                motherLastName: parsedData.motherLastName,
-                mobileNumber: parsedData.mobileNumber,
-                gender: parsedData.gender,
-                dob: parsedData.dob,
-                photoUrl: parsedData.photoUrl,
-                signatureUrl: parsedData.signatureUrl,
-                address: {
-                    create: parsedData.address,
-                },
-                socialLinks: {
-                    create: parsedData.socialLinks,
-                },
-                education: {
-                    create: parsedData.education,
-                },
-                certifications: {
-                    create: parsedData.certifications,
-                },
-                workExperience: {
-                    create: parsedData.workExperience,
-                },
-            },
+            update: updateData,
+            create: createData,
         });
 
         res.json(profile);

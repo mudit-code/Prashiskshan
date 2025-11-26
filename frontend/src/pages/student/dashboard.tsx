@@ -19,7 +19,7 @@ import {
   FaChalkboardTeacher,
   FaVideo,
   FaCalendarAlt,
-  FaCalendarAlt,
+
   FaSignOutAlt,
   FaUser
 } from 'react-icons/fa';
@@ -29,7 +29,21 @@ import ProfileForm from '../../components/student/ProfileForm';
 import ResumeView from '../../components/student/ResumeView';
 import axios from 'axios';
 
-const StudentDashboard = ({ userId, role }: { userId: string; role: string }) => {
+interface StudentDashboardProps {
+  userId: string;
+  role: string;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+    role: {
+      id: number;
+      name: string;
+    };
+  };
+}
+
+const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user }) => {
   const router = useRouter();
   const { tab } = router.query;
   const [activeTab, setActiveTab] = useState<'opportunities' | 'applications' | 'certificates' | 'logbook' | 'skills' | 'mentorship'>('opportunities');
@@ -155,7 +169,8 @@ const StudentDashboard = ({ userId, role }: { userId: string; role: string }) =>
             {!profile ? (
               <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500 flex justify-between items-center">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-800">Complete Your Profile</h3>
+                  <h2 className="text-xl font-bold text-gray-900">{user?.name || 'Student Name'}</h2>
+                  <p className="text-gray-600">{user?.email || 'student@example.com'}</p>
                   <p className="text-gray-600">Your profile is incomplete. Complete it to apply for internships.</p>
                 </div>
                 <button onClick={() => setShowProfileForm(true)} className="btn-primary">
@@ -188,6 +203,7 @@ const StudentDashboard = ({ userId, role }: { userId: string; role: string }) =>
               fetchProfile();
             }}
             onSkip={() => setShowProfileForm(false)}
+            user={user}
           />
         )}
 

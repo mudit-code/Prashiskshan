@@ -23,6 +23,7 @@ import {
 import logger from './logger.js';
 
 import studentRoutes from './routes/student.routes.js';
+import companyRoutes from './routes/company.routes.js';
 import path from 'path';
 
 dotenv.config();
@@ -55,6 +56,7 @@ app.use((req, res, next) => {
 });
 
 app.use('/api/student', studentRoutes);
+app.use('/api/company', companyRoutes);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -677,6 +679,13 @@ app.post('/seed', async (_req: Request, res: Response) => {
     logger.error(error);
     res.status(500).json({ error: 'Could not seed roles' });
   }
+});
+
+app.use((err: any, req: Request, res: Response, next: express.NextFunction) => {
+  logger.error(err.stack);
+  const fs = require('fs');
+  fs.appendFileSync('debug_log.txt', `Global Error: ${err.message}\nStack: ${err.stack}\n`);
+  res.status(500).json({ error: err.message || 'Something went wrong' });
 });
 
 const port = Number(PORT) || 5000;

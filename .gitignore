@@ -64,6 +64,7 @@ logfile
 # Backend specific
 backend/data/
 backend/logfile
+backend/uploads/
 
 # Frontend specific
 frontend/.next/

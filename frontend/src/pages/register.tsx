@@ -19,7 +19,9 @@ import { authAPI, rolesAPI } from '../lib/api';
 const RegisterPage = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    middleName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -52,13 +54,27 @@ const RegisterPage = () => {
       return;
     }
 
+    if (formData.roleId === 2 && !formData.companyName.trim()) {
+      setError('Company Name is required');
+      return;
+    }
+
+    if (formData.roleId === 3 && !formData.collegeName.trim()) {
+      setError('College Name is required');
+      return;
+    }
+
     setLoading(true);
 
     try {
+      const fullName = [formData.firstName, formData.middleName, formData.lastName]
+        .filter(Boolean)
+        .join(' ');
+
       await authAPI.register({
         email: formData.email,
         password: formData.password,
-        name: formData.name,
+        name: fullName,
         roleId: formData.roleId,
         collegeName: formData.collegeName,
         companyName: formData.companyName,
@@ -150,25 +166,41 @@ const RegisterPage = () => {
               </div>
             </div>
 
-            {/* Name Field */}
+            {/* Name Fields */}
             <div>
-              <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Full Name
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaUser className="text-gray-400" />
+              <div className="grid grid-cols-3 gap-3">
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    className="input-field"
+                    placeholder="First Name"
+                  />
                 </div>
-                <input
-                  id="name"
-                  type="text"
-                  required
-                  minLength={2}
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="input-field pl-10"
-                  placeholder="John Doe"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formData.middleName}
+                    onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
+                    className="input-field"
+                    placeholder="Middle (Opt)"
+                  />
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    className="input-field"
+                    placeholder="Last Name"
+                  />
+                </div>
               </div>
             </div>
 
@@ -197,7 +229,7 @@ const RegisterPage = () => {
             {formData.roleId === 3 && (
               <div>
                 <label htmlFor="collegeName" className="block text-sm font-semibold text-gray-700 mb-2">
-                  College Name (Optional)
+                  College Name
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -210,6 +242,7 @@ const RegisterPage = () => {
                     onChange={(e) => setFormData({ ...formData, collegeName: e.target.value })}
                     className="input-field pl-10"
                     placeholder="Your College Name"
+                    required
                   />
                 </div>
               </div>
@@ -218,7 +251,7 @@ const RegisterPage = () => {
             {formData.roleId === 2 && (
               <div>
                 <label htmlFor="companyName" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Company Name (Optional)
+                  Company Name
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -231,6 +264,7 @@ const RegisterPage = () => {
                     onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                     className="input-field pl-10"
                     placeholder="Your Company Name"
+                    required
                   />
                 </div>
               </div>

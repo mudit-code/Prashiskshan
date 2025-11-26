@@ -23,6 +23,7 @@ import {
 import { authAPI } from '../lib/api';
 import Link from 'next/link';
 import ProfileForm from '../components/student/ProfileForm';
+import CompanyProfileForm from '../components/company/CompanyProfileForm';
 import ResumeView from '../components/student/ResumeView';
 import axios from 'axios';
 
@@ -48,7 +49,7 @@ const Dashboard = ({ user }: DashboardProps) => {
     const [showResumeView, setShowResumeView] = useState(false);
 
     useEffect(() => {
-        if (user.role.name === 'Student') {
+        if (user.role.name === 'Student' || user.role.name === 'Company') {
             fetchProfile();
         } else {
             setProfileLoading(false);
@@ -58,7 +59,11 @@ const Dashboard = ({ user }: DashboardProps) => {
     const fetchProfile = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get('http://localhost:5000/api/student/profile', {
+            let endpoint = 'http://localhost:5000/api/student/profile';
+            if (user.role.name === 'Company') {
+                endpoint = 'http://localhost:5000/api/company/profile';
+            }
+            const res = await axios.get(endpoint, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProfile(res.data);
@@ -103,7 +108,7 @@ const Dashboard = ({ user }: DashboardProps) => {
                                 )}
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-gray-800">{profile.firstName} {profile.lastName}</h3>
+                                <h3 className="text-lg font-bold text-gray-800">{user.name}</h3>
                                 <p className="text-gray-600">Click to view your digital resume</p>
                             </div>
                         </div>
@@ -168,6 +173,39 @@ const Dashboard = ({ user }: DashboardProps) => {
 
     const renderCompanyView = () => (
         <div className="space-y-8">
+            {/* Profile Section */}
+            {!profileLoading && (
+                <div className="mb-8">
+                    {!profile ? (
+                        <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-800">Complete Company Profile</h3>
+                                <p className="text-gray-600">Your profile is incomplete. Complete it to post internships and hire talent.</p>
+                            </div>
+                            <button onClick={() => setShowProfileForm(true)} className="btn-primary">
+                                Complete Profile
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500 flex items-center gap-4">
+                            <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                                {profile.companyLogoUrl ? (
+                                    <img src={`http://localhost:5000${profile.companyLogoUrl}`} alt="Logo" className="w-full h-full object-cover" />
+                                ) : (
+                                    <FaBuilding className="text-2xl text-gray-400" />
+                                )}
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-800">{profile.companyName}</h3>
+                                <p className="text-gray-600">{profile.industrySector} • {profile.city}, {profile.country}</p>
+                            </div>
+                            <button onClick={() => setShowProfileForm(true)} className="ml-auto text-primary-600 hover:text-primary-800 font-medium">
+                                Edit Profile
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="card bg-indigo-50 border-l-4 border-indigo-500">
                     <h3 className="text-xl font-bold text-indigo-700 mb-2">Post Internship</h3>
@@ -305,7 +343,7 @@ const Dashboard = ({ user }: DashboardProps) => {
                 </motion.div>
             </div>
 
-            {showProfileForm && (
+            {showProfileForm && user.role.name === 'Student' && (
                 <ProfileForm
                     initialData={profile}
                     onComplete={() => {
@@ -313,6 +351,19 @@ const Dashboard = ({ user }: DashboardProps) => {
                         fetchProfile();
                     }}
                     onSkip={() => setShowProfileForm(false)}
+                    user={user}
+                />
+            )}
+
+            {showProfileForm && user.role.name === 'Company' && (
+                <CompanyProfileForm
+                    initialData={profile}
+                    onComplete={() => {
+                        setShowProfileForm(false);
+                        fetchProfile();
+                    }}
+                    onSkip={() => setShowProfileForm(false)}
+                    user={user}
                 />
             )}
 
@@ -324,6 +375,7 @@ const Dashboard = ({ user }: DashboardProps) => {
                         setShowResumeView(false);
                         setShowProfileForm(true);
                     }}
+                    user={user}
                 />
             )}
         </div>

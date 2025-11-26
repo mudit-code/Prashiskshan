@@ -7,6 +7,21 @@ export const registerSchema = z.object({
   roleId: z.number(),
   collegeName: z.string().optional(),
   companyName: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.roleId === 2 && !data.companyName) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Company Name is required for Employer role",
+      path: ["companyName"],
+    });
+  }
+  if (data.roleId === 3 && !data.collegeName) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "College Name is required for College Admin role",
+      path: ["collegeName"],
+    });
+  }
 });
 
 export const loginSchema = z.object({

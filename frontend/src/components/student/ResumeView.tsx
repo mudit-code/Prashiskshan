@@ -6,9 +6,10 @@ interface ResumeViewProps {
     profile: any;
     onClose: () => void;
     onEdit: () => void;
+    user?: any;
 }
 
-const ResumeView: React.FC<ResumeViewProps> = ({ profile, onClose, onEdit }) => {
+const ResumeView: React.FC<ResumeViewProps> = ({ profile, onClose, onEdit, user }) => {
     if (!profile) return null;
 
     return (
@@ -37,7 +38,7 @@ const ResumeView: React.FC<ResumeViewProps> = ({ profile, onClose, onEdit }) => 
                                 {profile.firstName?.[0]}{profile.lastName?.[0]}
                             </div>
                         )}
-                        <h2 className="text-2xl font-bold">{profile.firstName} {profile.lastName}</h2>
+                        <h2 className="text-2xl font-bold">{user?.name || `${profile.firstName} ${profile.lastName}`}</h2>
                         <p className="text-slate-300">Student</p>
                     </div>
 
