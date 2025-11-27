@@ -135,12 +135,12 @@ export const internshipsAPI = {
 
   // Company specific
   getCompanyInternships: async () => {
-    const response = await api.get('/company/internships');
+    const response = await api.get('/api/company/internships');
     return response.data;
   },
 
   getInternshipApplications: async (internshipId: number) => {
-    const response = await api.get(`/company/internships/${internshipId}/applications`);
+    const response = await api.get(`/api/company/internships/${internshipId}/applications`);
     return response.data;
   },
 };
@@ -158,7 +158,7 @@ export const applicationsAPI = {
   },
 
   updateStatus: async (applicationId: number, status: string) => {
-    const response = await api.put(`/company/applications/${applicationId}`, { status });
+    const response = await api.put(`/api/company/applications/${applicationId}`, { status });
     return response.data;
   },
 };
@@ -186,7 +186,7 @@ export const logbooksAPI = {
 
   // Company specific
   getStudentLogbooks: async (studentId: number) => {
-    const response = await api.get(`/company/logbooks/${studentId}`);
+    const response = await api.get(`/api/company/logbooks/${studentId}`);
     return response.data;
   },
 };

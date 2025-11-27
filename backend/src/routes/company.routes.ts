@@ -39,6 +39,11 @@ router.get('/profile', authMiddleware, requireRole('Company'), getCompanyProfile
 router.post('/profile',
     authMiddleware,
     requireRole('Company'),
+    (req, res, next) => {
+        console.log('Company profile route hit');
+        fs.appendFileSync('route_debug.txt', 'Route hit\n');
+        next();
+    },
     upload.fields([
         { name: 'registrationProof', maxCount: 1 },
         { name: 'authLetter', maxCount: 1 },

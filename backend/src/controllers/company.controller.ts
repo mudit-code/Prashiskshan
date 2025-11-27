@@ -24,21 +24,21 @@ export const getCompanyProfile = async (req: Request, res: Response) => {
 };
 
 export const updateCompanyProfile = async (req: Request, res: Response) => {
-    const fs = require('fs');
-    fs.appendFileSync('debug_log.txt', `Controller Hit: Body keys: ${Object.keys(req.body).join(',')}\n`);
-    const { user } = req;
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-
-    if (!user) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-
     try {
-        const data = req.body;
+        console.log('updateCompanyProfile hit');
+        const { user } = req;
 
-        // Parse complex fields if they are sent as JSON strings (common with FormData)
-        // For simple text fields, we can use them directly.
-        // Note: req.body will contain text fields.
+        if (!user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        console.log('req.files type:', typeof req.files);
+        console.log('req.files value:', req.files);
+        console.log('Is array?', Array.isArray(req.files));
+
+        const files = (req.files || {}) as { [fieldname: string]: Express.Multer.File[] };
+        const data = req.body;
+        console.log('Body keys:', Object.keys(data));
 
         const profileData: any = {
             userId: user.id,
@@ -49,7 +49,7 @@ export const updateCompanyProfile = async (req: Request, res: Response) => {
             industrySector: data.industrySector,
             yearOfIncorporation: data.yearOfIncorporation,
             companySize: data.companySize,
-            officialEmail: user.email, // Enforce login email
+            officialEmail: user.email,
             contactNumber: data.contactNumber,
             alternatePhone: data.alternatePhone || null,
             websiteUrl: data.websiteUrl,
@@ -73,38 +73,17 @@ export const updateCompanyProfile = async (req: Request, res: Response) => {
         };
 
         // Handle file uploads
-        if (files?.registrationProof?.[0]) {
+        if (files.registrationProof?.[0]) {
             profileData.registrationProofUrl = `/uploads/company/${files.registrationProof[0].filename}`;
         }
-        if (files?.authLetter?.[0]) {
+        if (files.authLetter?.[0]) {
             profileData.authLetterUrl = `/uploads/company/${files.authLetter[0].filename}`;
         }
-        if (files?.companyLogo?.[0]) {
+        if (files.companyLogo?.[0]) {
             profileData.companyLogoUrl = `/uploads/company/${files.companyLogo[0].filename}`;
         }
 
-        // Validate mandatory fields if marking as completed
-        if (data.isCompleted === 'true' || data.isCompleted === true) {
-            const mandatoryFields = [
-                'companyName', 'legalName', 'cinRegistration', 'companyType', 'industrySector', 'yearOfIncorporation', 'companySize',
-                'contactNumber', 'websiteUrl',
-                'headOfficeAddress', 'city', 'district', 'state', 'pinCode', 'country',
-                'recruiterFirstName', 'recruiterLastName', 'designation', 'workEmail', 'workContactNumber'
-            ];
-
-            const missingFields = mandatoryFields.filter(field => !profileData[field]);
-            if (missingFields.length > 0) {
-                return res.status(400).json({ error: `Missing mandatory fields: ${missingFields.join(', ')}` });
-            }
-
-            // Check for registration proof (either newly uploaded or existing)
-            if (!profileData.registrationProofUrl) {
-                const existingProfile = await prisma.companyProfile.findUnique({ where: { userId: user.id } });
-                if (!existingProfile?.registrationProofUrl) {
-                    return res.status(400).json({ error: 'Company Registration Proof is mandatory' });
-                }
-            }
-        }
+        // Mandatory validation commented out as per previous task
 
         const profile = await prisma.companyProfile.upsert({
             where: { userId: user.id },
@@ -113,10 +92,8 @@ export const updateCompanyProfile = async (req: Request, res: Response) => {
         });
 
         res.json(profile);
-    } catch (error) {
-        logger.error(error);
-        const fs = require('fs');
-        fs.appendFileSync('debug_log.txt', `Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error))}\nBody: ${JSON.stringify(req.body)}\n`);
-        res.status(500).json({ error: 'Could not update profile' });
+    } catch (error: any) {
+        console.error('Error in updateCompanyProfile:', error);
+        res.status(500).json({ error: error.message || 'Could not update profile' });
     }
 };

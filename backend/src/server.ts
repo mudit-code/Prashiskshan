@@ -24,7 +24,9 @@ import logger from './logger.js';
 
 import studentRoutes from './routes/student.routes.js';
 import companyRoutes from './routes/company.routes.js';
+import collegeRoutes from './routes/college.routes.js';
 import path from 'path';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -57,10 +59,17 @@ app.use((req, res, next) => {
 
 app.use('/api/student', studentRoutes);
 app.use('/api/company', companyRoutes);
+app.use('/api/college', collegeRoutes);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100,
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per IP
+  message: { error: 'Too many login attempts, please try again later.' }
 });
 
 app.get('/health', (_req: Request, res: Response) => res.json({ ok: true }));
@@ -89,8 +98,9 @@ app.post('/auth/register', authLimiter, validate(registerSchema), async (req: Re
       },
     });
 
-    logger.info(`Email verification link: /auth/verify-email?token=${emailVerificationToken}`);
-    res.status(201).json({ user });
+    logger.info('Email verification link generated');
+    const { password: _, ...safeUser } = user;
+    res.status(201).json({ user: safeUser });
 
   } catch (error) {
     logger.error(error);
@@ -129,7 +139,7 @@ app.get('/auth/verify-email', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/auth/login', authLimiter, validate(loginSchema), async (req: Request, res: Response) => {
+app.post('/auth/login', loginLimiter, validate(loginSchema), async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   try {
@@ -142,6 +152,10 @@ app.post('/auth/login', authLimiter, validate(loginSchema), async (req: Request,
       return res.status(401).json({ error: 'Invalid credentials.' });
     }
 
+    if (user.lockoutUntil && user.lockoutUntil > new Date()) {
+      return res.status(429).json({ error: 'Account locked. Please try again later.' });
+    }
+
     if (!user.emailVerified) {
       return res.status(401).json({ error: 'Please verify your email address.' });
     }
@@ -149,8 +163,32 @@ app.post('/auth/login', authLimiter, validate(loginSchema), async (req: Request,
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
+      const failedAttempts = user.failedLoginAttempts + 1;
+      let lockoutUntil = user.lockoutUntil;
+
+      if (failedAttempts >= 5) {
+        lockoutUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+      }
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginAttempts: failedAttempts,
+          lockoutUntil,
+        },
+      });
+
       return res.status(401).json({ error: 'Invalid credentials.' });
     }
+
+    // Reset failed attempts on successful login
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts: 0,
+        lockoutUntil: null,
+      },
+    });
 
     const accessToken = jwt.sign({ userId: user.id, role: user.role.name }, JWT_SECRET as Secret, { expiresIn: '15m' });
     const refreshToken = jwt.sign({ userId: user.id }, REFRESH_TOKEN_SECRET as Secret, { expiresIn: '7d' });
@@ -288,7 +326,8 @@ app.post('/auth/forgot-password', authLimiter, validate(forgotPasswordSchema), a
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (user) {
-      const passwordResetToken = crypto.randomBytes(32).toString('hex');
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
       const passwordResetExpires = new Date(Date.now() + 3600000); // 1 hour
 
       await prisma.user.update({
@@ -299,7 +338,7 @@ app.post('/auth/forgot-password', authLimiter, validate(forgotPasswordSchema), a
         },
       });
 
-      logger.info(`Password reset link: /auth/reset-password?token=${passwordResetToken}`);
+      logger.info('Password reset link generated');
     }
 
     res.json({ message: 'If your email address is registered with us, you will receive a password reset link.' });
@@ -313,9 +352,11 @@ app.post('/auth/reset-password', authLimiter, validate(resetPasswordSchema), asy
   const { token, password } = req.body;
 
   try {
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
     const user = await prisma.user.findFirst({
       where: {
-        passwordResetToken: token,
+        passwordResetToken: hashedToken,
         passwordResetExpires: { gte: new Date() },
       },
     });
@@ -333,6 +374,11 @@ app.post('/auth/reset-password', authLimiter, validate(resetPasswordSchema), asy
         passwordResetToken: null,
         passwordResetExpires: null,
       },
+    });
+
+    await prisma.refreshToken.updateMany({
+      where: { userId: user.id },
+      data: { revoked: true },
     });
 
     res.json({ message: 'Password reset successfully.' });
@@ -683,7 +729,6 @@ app.post('/seed', async (_req: Request, res: Response) => {
 
 app.use((err: any, req: Request, res: Response, next: express.NextFunction) => {
   logger.error(err.stack);
-  const fs = require('fs');
   fs.appendFileSync('debug_log.txt', `Global Error: ${err.message}\nStack: ${err.stack}\n`);
   res.status(500).json({ error: err.message || 'Something went wrong' });
 });

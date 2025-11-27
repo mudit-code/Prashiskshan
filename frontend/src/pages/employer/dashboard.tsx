@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/router';
 import {
   FaBriefcase,
   FaUsers,
@@ -15,17 +16,31 @@ import {
   FaTimesCircle,
   FaClock,
   FaBook,
-  FaSpinner
+  FaSpinner,
+  FaSignOutAlt
 } from 'react-icons/fa';
-import { internshipsAPI, applicationsAPI, logbooksAPI } from '../../lib/api';
+import { internshipsAPI, applicationsAPI, logbooksAPI, authAPI } from '../../lib/api';
 import withAuth from '../../components/withAuth';
+import CompanyProfileForm from '../../components/company/CompanyProfileForm';
+import axios from 'axios';
+import { FaBuilding } from 'react-icons/fa';
 
 const EmployerDashboard = ({ userId, role }: { userId: string; role: string }) => {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'overview' | 'postings' | 'applicants' | 'logbooks'>('overview');
   const [loading, setLoading] = useState(true);
   const [postings, setPostings] = useState<any[]>([]);
   const [applicants, setApplicants] = useState<any[]>([]);
   const [selectedInternship, setSelectedInternship] = useState<number | null>(null);
+
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout();
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -71,6 +86,28 @@ const EmployerDashboard = ({ userId, role }: { userId: string; role: string }) =
   };
 
 
+  const [profile, setProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [showProfileForm, setShowProfileForm] = useState(false);
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get('http://localhost:5000/api/company/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProfile(res.data);
+    } catch (error) {
+      console.log('Profile not found or error fetching');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -85,12 +122,60 @@ const EmployerDashboard = ({ userId, role }: { userId: string; role: string }) =
               <button className="btn-primary bg-white text-purple-600 hover:bg-gray-100">
                 <FaPlus /> Post New Internship
               </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
+              >
+                <FaSignOutAlt /> Logout
+              </button>
             </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Profile Section */}
+        {!profileLoading && (
+          <div className="mb-8">
+            {!profile ? (
+              <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500 flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">Complete Company Profile</h3>
+                  <p className="text-gray-600">Your company profile is incomplete. Complete it to post internships.</p>
+                </div>
+                <button onClick={() => setShowProfileForm(true)} className="btn-primary">
+                  Complete Profile
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500 flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                  <FaBuilding className="text-2xl text-gray-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">{profile.companyName}</h3>
+                  <p className="text-gray-600">{profile.industry}</p>
+                </div>
+                <button onClick={() => setShowProfileForm(true)} className="ml-auto text-primary-600 hover:text-primary-800 font-medium">
+                  Edit Profile
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {showProfileForm && (
+          <CompanyProfileForm
+            initialData={profile}
+            onComplete={() => {
+              setShowProfileForm(false);
+              fetchProfile();
+            }}
+            onSkip={() => setShowProfileForm(false)}
+            user={{ id: userId, role: { name: 'Company' } }}
+          />
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           {[
@@ -132,11 +217,10 @@ const EmployerDashboard = ({ userId, role }: { userId: string; role: string }) =
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? 'border-purple-600 text-purple-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.id
+                    ? 'border-purple-600 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
                 >
                   <tab.icon />
                   {tab.label}
@@ -322,13 +406,12 @@ const EmployerDashboard = ({ userId, role }: { userId: string; role: string }) =
                                 <p className="text-gray-600">{applicant.student?.email || 'N/A'}</p>
                               </div>
                               <span
-                                className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                                  applicant.status === 'Accepted'
-                                    ? 'bg-green-100 text-green-700'
-                                    : applicant.status === 'Rejected'
+                                className={`px-3 py-1 rounded-full text-sm font-semibold ${applicant.status === 'Accepted'
+                                  ? 'bg-green-100 text-green-700'
+                                  : applicant.status === 'Rejected'
                                     ? 'bg-red-100 text-red-700'
                                     : 'bg-yellow-100 text-yellow-700'
-                                }`}
+                                  }`}
                               >
                                 {applicant.status}
                               </span>

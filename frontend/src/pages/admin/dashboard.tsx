@@ -22,6 +22,8 @@ import {
   FaSignOutAlt
 } from 'react-icons/fa';
 import { authAPI } from '../../lib/api';
+import CollegeProfileForm from '../../components/college/CollegeProfileForm';
+import axios from 'axios';
 
 const AdminDashboard = () => {
   const router = useRouter();
@@ -40,6 +42,28 @@ const AdminDashboard = () => {
       router.push('/login');
     } catch (error) {
       console.error('Logout failed:', error);
+    }
+  };
+
+  const [profile, setProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [showProfileForm, setShowProfileForm] = useState(false);
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get('http://localhost:5000/api/college/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProfile(res.data);
+    } catch (error) {
+      console.log('Profile not found or error fetching');
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -133,6 +157,50 @@ const AdminDashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Profile Section */}
+        {!profileLoading && (
+          <div className="mb-8">
+            {!profile ? (
+              <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500 flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">Complete College Profile</h3>
+                  <p className="text-gray-600">Your college profile is incomplete. Complete it to manage students and internships.</p>
+                </div>
+                <button onClick={() => setShowProfileForm(true)} className="btn-primary">
+                  Complete Profile
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500 flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                  <FaUniversity className="text-2xl text-gray-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">{profile.collegeName}</h3>
+                  <p className="text-gray-600">{profile.city}, {profile.state}</p>
+                </div>
+                <button onClick={() => setShowProfileForm(true)} className="ml-auto text-primary-600 hover:text-primary-800 font-medium">
+                  Edit Profile
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {showProfileForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto py-10">
+            <div className="relative w-full max-w-4xl mx-auto bg-white rounded-lg shadow-xl">
+              <button
+                onClick={() => setShowProfileForm(false)}
+                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 z-10"
+              >
+                Close
+              </button>
+              <CollegeProfileForm onSkip={() => setShowProfileForm(false)} />
+            </div>
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           {[

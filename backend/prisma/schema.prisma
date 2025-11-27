@@ -29,6 +29,8 @@ model User {
   emailVerificationToken String?      @unique
   passwordResetToken     String?      @unique
   passwordResetExpires   DateTime?
+  failedLoginAttempts    Int           @default(0)
+  lockoutUntil           DateTime?
   postedInternships Internship[]  @relation("PostedBy")
   applications    Application[] @relation("StudentApplications")
   logbooks        Logbook[]     @relation("StudentLogbooks")
@@ -37,6 +39,48 @@ model User {
   refreshTokens   RefreshToken[]
   studentProfile  StudentProfile?
   companyProfile  CompanyProfile?
+  collegeProfile  CollegeProfile?
+}
+
+model CollegeProfile {
+  id                Int      @id @default(autoincrement())
+  user              User     @relation(fields: [userId], references: [id])
+  userId            Int      @unique
+  
+  // Personal Details
+  firstName         String
+  middleName        String?
+  lastName          String
+  designation       String
+  department        String
+  officialEmail     String
+  mobileNumber      String
+  alternateMobileNumber String?
+  gender            String
+  
+  // College Details
+  collegeName       String
+  collegeCode       String
+  university        String
+  collegeType       String
+  websiteUrl        String?
+  collegeEmail      String?
+  yearOfEstablishment String?
+  
+  // Address Details
+  campusAddress     String
+  city              String
+  district          String
+  state             String
+  pinCode           String
+  
+  // Verification
+  idProofUrl        String?
+  authLetterUrl     String?
+  
+  isCompleted       Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model CompanyProfile {

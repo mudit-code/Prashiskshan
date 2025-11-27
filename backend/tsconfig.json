@@ -26,7 +26,8 @@
     "count_users.ts",
     "check_tokens.ts",
     "reproduce_issue.ts",
-    "test_profile_fix.ts"
+    "test_profile_fix.ts",
+    "reproduce_step1.ts"
   ],
   "exclude": [
     "node_modules",

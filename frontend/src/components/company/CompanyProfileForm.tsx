@@ -106,7 +106,7 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
 
             data.append('isCompleted', String(isCompleted));
 
-            await api.post('/company/profile', data);
+            await api.post('/api/company/profile', data);
 
             if (isCompleted) {
                 onComplete();
@@ -116,8 +116,10 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
             }
         } catch (error: any) {
             console.error('Error saving profile:', error);
-            const msg = error.response?.data?.error || 'Failed to save profile.';
-            alert(msg);
+            const status = error.response?.status;
+            const data = error.response?.data;
+            const msg = data?.error || data?.message || 'Failed to save profile.';
+            alert(`Error ${status}: ${msg}\nDetails: ${JSON.stringify(data)}`);
         } finally {
             setLoading(false);
         }
@@ -146,7 +148,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.companyName}
                         onChange={e => handleInputChange('companyName', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -157,7 +158,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.legalName}
                         onChange={e => handleInputChange('legalName', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -168,7 +168,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.cinRegistration}
                         onChange={e => handleInputChange('cinRegistration', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -177,7 +176,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.companyType}
                         onChange={e => handleInputChange('companyType', e.target.value)}
                         className="input-field"
-                        required
                     >
                         <option value="">Select Company Type</option>
                         <option value="Startup">Startup</option>
@@ -197,7 +195,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.industrySector}
                         onChange={e => handleInputChange('industrySector', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -208,7 +205,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.yearOfIncorporation}
                         onChange={e => handleInputChange('yearOfIncorporation', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -217,7 +213,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.companySize}
                         onChange={e => handleInputChange('companySize', e.target.value)}
                         className="input-field"
-                        required
                     >
                         <option value="">Select Company Size</option>
                         <option value="1-10">1-10 employees</option>
@@ -252,7 +247,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.contactNumber}
                         onChange={e => handleInputChange('contactNumber', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -273,7 +267,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.websiteUrl}
                         onChange={e => handleInputChange('websiteUrl', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -297,7 +290,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.headOfficeAddress}
                         onChange={e => handleInputChange('headOfficeAddress', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -308,7 +300,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.city}
                         onChange={e => handleInputChange('city', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -319,7 +310,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.district}
                         onChange={e => handleInputChange('district', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -330,7 +320,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.state}
                         onChange={e => handleInputChange('state', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -341,7 +330,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.pinCode}
                         onChange={e => handleInputChange('pinCode', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -352,7 +340,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.country}
                         onChange={e => handleInputChange('country', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
             </div>
@@ -371,7 +358,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.recruiterFirstName}
                         onChange={e => handleInputChange('recruiterFirstName', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -382,7 +368,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.recruiterLastName}
                         onChange={e => handleInputChange('recruiterLastName', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -393,7 +378,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.designation}
                         onChange={e => handleInputChange('designation', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -404,7 +388,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.workEmail}
                         onChange={e => handleInputChange('workEmail', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
                 <div>
@@ -415,7 +398,6 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                         value={formData.workContactNumber}
                         onChange={e => handleInputChange('workContactNumber', e.target.value)}
                         className="input-field"
-                        required
                     />
                 </div>
             </div>
@@ -541,22 +523,25 @@ const CompanyProfileForm: React.FC<CompanyProfileFormProps> = ({ initialData, on
                 className="w-full h-full flex flex-col max-w-7xl mx-auto relative"
             >
                 {/* Header */}
-                <div className="px-6 md:px-8 pt-6 md:pt-8 pb-4 bg-white shrink-0 relative border-b">
-                    <div className="flex justify-between items-center mb-6">
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-900">Complete Company Profile</h2>
-                            <p className="text-gray-500">Step {step} of 5</p>
+                <div className="px-6 md:px-8 pt-6 md:pt-8 pb-4 bg-white shrink-0 relative">
+                    <button onClick={onSkip} className="absolute top-4 right-6 text-gray-500 hover:text-gray-700 font-medium text-sm">Skip for now</button>
+
+                    <div className="mb-4 mt-8">
+                        <div className="flex items-center justify-between mb-4">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                                <div key={s} className={`flex flex-col items-center ${s <= step ? 'text-primary-600' : 'text-gray-400'}`}>
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${s <= step ? 'bg-primary-100 font-bold text-lg' : 'bg-gray-100'}`}>
+                                        {s < step ? <FaCheckCircle /> : s}
+                                    </div>
+                                    <span className="text-sm font-medium hidden md:block">
+                                        {s === 1 ? 'Company' : s === 2 ? 'Contact' : s === 3 ? 'HR Details' : s === 4 ? 'Documents' : 'Hiring'}
+                                    </span>
+                                </div>
+                            ))}
                         </div>
-                        <button onClick={onSkip} className="text-gray-500 hover:text-gray-700 font-medium">
-                            Skip for now
-                        </button>
-                    </div>
-                    {/* Progress Bar */}
-                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                        <div
-                            className="bg-primary-600 h-full transition-all duration-300 ease-out"
-                            style={{ width: `${(step / 5) * 100}%` }}
-                        />
+                        <div className="w-full bg-gray-200 h-2 rounded-full">
+                            <div className="bg-primary-600 h-2 rounded-full transition-all duration-300" style={{ width: `${(step / 5) * 100}%` }}></div>
+                        </div>
                     </div>
                 </div>
 

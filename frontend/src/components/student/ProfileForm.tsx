@@ -26,7 +26,8 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
             tenth: { level: '10th', rollNumber: '', yearOfPassing: '', boardName: '', schoolName: '', marksObtained: '', maximumMarks: '' },
             twelfth: { level: '12th', rollNumber: '', yearOfPassing: '', boardName: '', schoolName: '', marksObtained: '', maximumMarks: '' },
             graduation: { level: 'Graduation', collegeName: '', universityName: '', course: '', branch: '', rollNumber: '', yearOfAdmission: '', yearOfPassing: '', cgpaOrPercentage: '' },
-            postGraduation: { level: 'Post-Graduation', collegeName: '', universityName: '', course: '', branch: '', rollNumber: '', yearOfAdmission: '', yearOfPassing: '', cgpaOrPercentage: '' }
+            postGraduation: { level: 'Post-Graduation', collegeName: '', universityName: '', course: '', branch: '', rollNumber: '', yearOfAdmission: '', yearOfPassing: '', cgpaOrPercentage: '' },
+            others: []
         },
         experience: {
             certifications: [],
@@ -48,7 +49,8 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
                 tenth: { level: '10th', rollNumber: '', yearOfPassing: '', boardName: '', schoolName: '', marksObtained: '', maximumMarks: '' },
                 twelfth: { level: '12th', rollNumber: '', yearOfPassing: '', boardName: '', schoolName: '', marksObtained: '', maximumMarks: '' },
                 graduation: { level: 'Graduation', collegeName: '', universityName: '', course: '', branch: '', rollNumber: '', yearOfAdmission: '', yearOfPassing: '', cgpaOrPercentage: '' },
-                postGraduation: { level: 'Post-Graduation', collegeName: '', universityName: '', course: '', branch: '', rollNumber: '', yearOfAdmission: '', yearOfPassing: '', cgpaOrPercentage: '' }
+                postGraduation: { level: 'Post-Graduation', collegeName: '', universityName: '', course: '', branch: '', rollNumber: '', yearOfAdmission: '', yearOfPassing: '', cgpaOrPercentage: '' },
+                others: []
             };
 
             if (initialData.education && Array.isArray(initialData.education)) {
@@ -57,6 +59,7 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
                     else if (edu.level === '12th') academicMap.twelfth = { ...academicMap.twelfth, ...edu };
                     else if (edu.level === 'Graduation') academicMap.graduation = { ...academicMap.graduation, ...edu };
                     else if (edu.level === 'Post-Graduation') academicMap.postGraduation = { ...academicMap.postGraduation, ...edu };
+                    else academicMap.others.push(edu);
                 });
             }
 
@@ -146,15 +149,19 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
                 uploads: { ...prev.uploads, [field]: file }
             }));
         } else if (section === 'academic') {
-            // Handle academic files (marksheets) - simplified for now, would need to store in separate state or FormData structure
-            // For this implementation, we'll append to FormData object on submit
-            setFormData((prev: any) => ({
-                ...prev,
-                academic: {
-                    ...prev.academic,
-                    [field]: { ...prev.academic[field], marksheet: file }
-                }
-            }));
+            if (field === 'others' && index !== undefined) {
+                const newOthers = [...formData.academic.others];
+                newOthers[index] = { ...newOthers[index], marksheet: file };
+                setFormData((prev: any) => ({ ...prev, academic: { ...prev.academic, others: newOthers } }));
+            } else {
+                setFormData((prev: any) => ({
+                    ...prev,
+                    academic: {
+                        ...prev.academic,
+                        [field]: { ...prev.academic[field], marksheet: file }
+                    }
+                }));
+            }
         } else if (section === 'experience') {
             if (field === 'certifications' && index !== undefined && subField) {
                 const newCerts = [...formData.experience.certifications];
@@ -188,6 +195,16 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
         }));
     };
 
+    const addOtherEducation = () => {
+        setFormData((prev: any) => ({
+            ...prev,
+            academic: {
+                ...prev.academic,
+                others: [...prev.academic.others, { level: 'Other', collegeName: '', universityName: '', course: '', branch: '', rollNumber: '', yearOfAdmission: '', yearOfPassing: '', cgpaOrPercentage: '' }]
+            }
+        }));
+    };
+
     const handleSubmit = async (isCompleted: boolean = false) => {
         setLoading(true);
         try {
@@ -209,7 +226,8 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
                 formData.academic.tenth,
                 formData.academic.twelfth,
                 formData.academic.graduation,
-                formData.academic.postGraduation
+                formData.academic.postGraduation,
+                ...formData.academic.others
             ].filter(e => e.rollNumber || e.collegeName); // Simple filter to check if filled
 
             data.append('education', JSON.stringify(education.map(({ marksheet, ...rest }) => rest)));
@@ -219,6 +237,9 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
             if (formData.academic.twelfth.marksheet) data.append('education_1_marksheet', formData.academic.twelfth.marksheet);
             if (formData.academic.graduation.marksheet) data.append('education_2_marksheet', formData.academic.graduation.marksheet);
             if (formData.academic.postGraduation.marksheet) data.append('education_3_marksheet', formData.academic.postGraduation.marksheet);
+            formData.academic.others.forEach((edu: any, index: number) => {
+                if (edu.marksheet) data.append(`education_${index + 4}_marksheet`, edu.marksheet);
+            });
 
             // Experience
             data.append('certifications', JSON.stringify(formData.experience.certifications.map(({ certificate, ...rest }: any) => rest)));
@@ -261,7 +282,45 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
         }
     };
 
+    const validateStep = (currentStep: number) => {
+        const isInvalid = (val: any) => !val || (typeof val === 'string' && val.trim() === '');
+
+        if (currentStep === 1) {
+            const { personal } = formData;
+            if (isInvalid(personal.fatherFirstName) || isInvalid(personal.fatherLastName) ||
+                isInvalid(personal.motherFirstName) || isInvalid(personal.motherLastName) ||
+                isInvalid(personal.mobileNumber) || isInvalid(personal.gender) ||
+                isInvalid(personal.dob) ||
+                isInvalid(personal.address.city) || isInvalid(personal.address.state) || isInvalid(personal.address.pinCode) ||
+                isInvalid(personal.govIdType) || isInvalid(personal.govIdNumber)) {
+                alert('Please fill in all required fields in Personal Details, including Government ID.');
+                return false;
+            }
+        }
+        if (currentStep === 2) {
+            const { tenth } = formData.academic;
+            if (isInvalid(tenth.rollNumber) || isInvalid(tenth.yearOfPassing) ||
+                isInvalid(tenth.boardName) || isInvalid(tenth.marksObtained) || isInvalid(tenth.maximumMarks)) {
+                alert('Please fill in all required fields for 10th Standard.');
+                return false;
+            }
+        }
+        if (currentStep === 4) {
+            const { uploads } = formData;
+            // Check if files are selected OR if they already exist in initialData (for edit mode)
+            const photoExists = uploads.photo || initialData?.photoUrl;
+            const signatureExists = uploads.signature || initialData?.signatureUrl;
+
+            if (!photoExists || !signatureExists) {
+                alert('Please upload both Photo and Signature.');
+                return false;
+            }
+        }
+        return true;
+    };
+
     const handleNext = async () => {
+        if (!validateStep(step)) return;
         await handleSubmit(false);
         setStep(s => Math.min(5, s + 1));
     };
@@ -446,8 +505,83 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
                     <div className="col-span-3">
                         <label className="block text-sm font-medium text-gray-700">Upload Marksheet</label>
                         <input type="file" className="input-field" onChange={(e) => handleFileChange('academic', 'graduation', e.target.files?.[0] || null)} />
+                        <p className="text-xs text-gray-500 mt-1">Max 2MB, JPG/PNG/PDF</p>
                     </div>
                 </div>
+            </div>
+
+            {/* Post Graduation */}
+            <div className="border p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">Post Graduation</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="text" placeholder="College Name" className="input-field" value={formData.academic.postGraduation.collegeName} onChange={(e) => handleInputChange('academic', 'collegeName', e.target.value, 'postGraduation')} />
+                    <input type="text" placeholder="University Name" className="input-field" value={formData.academic.postGraduation.universityName} onChange={(e) => handleInputChange('academic', 'universityName', e.target.value, 'postGraduation')} />
+                    <input type="text" placeholder="Course / Degree" className="input-field" value={formData.academic.postGraduation.course} onChange={(e) => handleInputChange('academic', 'course', e.target.value, 'postGraduation')} />
+                    <input type="text" placeholder="Branch" className="input-field" value={formData.academic.postGraduation.branch} onChange={(e) => handleInputChange('academic', 'branch', e.target.value, 'postGraduation')} />
+                    <input type="text" placeholder="Roll Number" className="input-field" value={formData.academic.postGraduation.rollNumber} onChange={(e) => handleInputChange('academic', 'rollNumber', e.target.value, 'postGraduation')} />
+                    <input type="text" placeholder="Year of Admission" className="input-field" value={formData.academic.postGraduation.yearOfAdmission} onChange={(e) => handleInputChange('academic', 'yearOfAdmission', e.target.value, 'postGraduation')} />
+                    <input type="text" placeholder="Year of Passing" className="input-field" value={formData.academic.postGraduation.yearOfPassing} onChange={(e) => handleInputChange('academic', 'yearOfPassing', e.target.value, 'postGraduation')} />
+                    <input type="text" placeholder="CGPA / Percentage" className="input-field" value={formData.academic.postGraduation.cgpaOrPercentage} onChange={(e) => handleInputChange('academic', 'cgpaOrPercentage', e.target.value, 'postGraduation')} />
+                    <div className="col-span-3">
+                        <label className="block text-sm font-medium text-gray-700">Upload Marksheet</label>
+                        <input type="file" className="input-field" onChange={(e) => handleFileChange('academic', 'postGraduation', e.target.files?.[0] || null)} />
+                        <p className="text-xs text-gray-500 mt-1">Max 2MB, JPG/PNG/PDF</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Other Education */}
+            <div>
+                <div className="flex justify-between items-center mb-2">
+                    <h4 className="font-semibold">Other Qualifications</h4>
+                    <button onClick={addOtherEducation} className="text-sm text-primary-600">+ Add More</button>
+                </div>
+                {formData.academic.others.map((edu: any, index: number) => (
+                    <div key={index} className="border p-4 rounded-lg mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <input type="text" placeholder="College / Institute" className="input-field" value={edu.collegeName} onChange={(e) => {
+                                const newOthers = [...formData.academic.others];
+                                newOthers[index].collegeName = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, academic: { ...prev.academic, others: newOthers } }));
+                            }} />
+                            <input type="text" placeholder="University / Board" className="input-field" value={edu.universityName} onChange={(e) => {
+                                const newOthers = [...formData.academic.others];
+                                newOthers[index].universityName = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, academic: { ...prev.academic, others: newOthers } }));
+                            }} />
+                            <input type="text" placeholder="Course / Degree" className="input-field" value={edu.course} onChange={(e) => {
+                                const newOthers = [...formData.academic.others];
+                                newOthers[index].course = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, academic: { ...prev.academic, others: newOthers } }));
+                            }} />
+                            <input type="text" placeholder="Branch / Specialization" className="input-field" value={edu.branch} onChange={(e) => {
+                                const newOthers = [...formData.academic.others];
+                                newOthers[index].branch = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, academic: { ...prev.academic, others: newOthers } }));
+                            }} />
+                            <input type="text" placeholder="Roll Number" className="input-field" value={edu.rollNumber} onChange={(e) => {
+                                const newOthers = [...formData.academic.others];
+                                newOthers[index].rollNumber = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, academic: { ...prev.academic, others: newOthers } }));
+                            }} />
+                            <input type="text" placeholder="Year of Passing" className="input-field" value={edu.yearOfPassing} onChange={(e) => {
+                                const newOthers = [...formData.academic.others];
+                                newOthers[index].yearOfPassing = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, academic: { ...prev.academic, others: newOthers } }));
+                            }} />
+                            <input type="text" placeholder="CGPA / Percentage" className="input-field" value={edu.cgpaOrPercentage} onChange={(e) => {
+                                const newOthers = [...formData.academic.others];
+                                newOthers[index].cgpaOrPercentage = e.target.value;
+                                setFormData((prev: any) => ({ ...prev, academic: { ...prev.academic, others: newOthers } }));
+                            }} />
+                            <div className="col-span-3">
+                                <label className="block text-sm font-medium text-gray-700">Upload Marksheet</label>
+                                <input type="file" className="input-field" onChange={(e) => handleFileChange('academic', 'others', e.target.files?.[0] || null, index)} />
+                                <p className="text-xs text-gray-500 mt-1">Max 2MB, JPG/PNG/PDF</p>
+                            </div>
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
     );
@@ -527,13 +661,37 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                     <FaUser className="text-4xl text-gray-400 mx-auto mb-2" />
-                    <p className="mb-2">Upload Photo</p>
-                    <input type="file" onChange={(e) => handleFileChange('uploads', 'photo', e.target.files?.[0] || null)} />
+                    <p className="mb-2 font-medium">Upload Photo *</p>
+                    <input type="file" accept="image/png, image/jpeg" onChange={(e) => handleFileChange('uploads', 'photo', e.target.files?.[0] || null)} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100" />
+                    <p className="text-xs text-gray-500 mt-2">Max 2MB, JPG/PNG</p>
+                    {formData.uploads.photo && (
+                        <div className="mt-4">
+                            <img src={URL.createObjectURL(formData.uploads.photo)} alt="Photo Preview" className="h-32 w-32 object-cover mx-auto rounded-full border" />
+                        </div>
+                    )}
+                    {!formData.uploads.photo && initialData?.photoUrl && (
+                        <div className="mt-4">
+                            <img src={`http://localhost:5000${initialData.photoUrl}`} alt="Current Photo" className="h-32 w-32 object-cover mx-auto rounded-full border" />
+                            <p className="text-xs text-green-600 mt-1">Current Photo</p>
+                        </div>
+                    )}
                 </div>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                     <FaIdCard className="text-4xl text-gray-400 mx-auto mb-2" />
-                    <p className="mb-2">Upload Signature</p>
-                    <input type="file" onChange={(e) => handleFileChange('uploads', 'signature', e.target.files?.[0] || null)} />
+                    <p className="mb-2 font-medium">Upload Signature *</p>
+                    <input type="file" accept="image/png, image/jpeg" onChange={(e) => handleFileChange('uploads', 'signature', e.target.files?.[0] || null)} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100" />
+                    <p className="text-xs text-gray-500 mt-2">Max 2MB, JPG/PNG</p>
+                    {formData.uploads.signature && (
+                        <div className="mt-4">
+                            <img src={URL.createObjectURL(formData.uploads.signature)} alt="Signature Preview" className="h-20 w-auto object-contain mx-auto border p-2" />
+                        </div>
+                    )}
+                    {!formData.uploads.signature && initialData?.signatureUrl && (
+                        <div className="mt-4">
+                            <img src={`http://localhost:5000${initialData.signatureUrl}`} alt="Current Signature" className="h-20 w-auto object-contain mx-auto border p-2" />
+                            <p className="text-xs text-green-600 mt-1">Current Signature</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -559,9 +717,9 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
                 className="w-full h-full flex flex-col max-w-7xl mx-auto relative"
             >
                 <div className="px-6 md:px-8 pt-6 md:pt-8 pb-4 bg-white shrink-0 relative">
-                    <button onClick={onSkip} className="absolute top-6 right-6 text-gray-500 hover:text-gray-700">Skip for now</button>
+                    <button onClick={onSkip} className="absolute top-4 right-6 text-gray-500 hover:text-gray-700 font-medium text-sm">Skip for now</button>
 
-                    <div className="mb-4 mt-4">
+                    <div className="mb-4 mt-8">
                         <div className="flex items-center justify-between mb-4">
                             {[1, 2, 3, 4, 5].map((s) => (
                                 <div key={s} className={`flex flex-col items-center ${s <= step ? 'text-primary-600' : 'text-gray-400'}`}>
