@@ -21,6 +21,7 @@ This project is configured for easy deployment on **Render** using a Blueprint.
 3.  **Configure and Deploy**
     - Render will automatically detect the `render.yaml` file.
     - Review the services (Backend, Frontend, Database).
+    - **Important**: You will need to manually set the values for `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS` in the Render dashboard after the initial creation, or during the setup if prompted. These are sensitive values and are not stored in the code.
     - Click **Apply**.
 
 4.  **Wait for Deployment**

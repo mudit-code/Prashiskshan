@@ -27,6 +27,7 @@ import companyRoutes from './routes/company.routes.js';
 import collegeRoutes from './routes/college.routes.js';
 import path from 'path';
 import fs from 'fs';
+import { sendVerificationEmail } from './services/email.service.js';
 
 dotenv.config();
 
@@ -98,7 +99,8 @@ app.post('/auth/register', authLimiter, validate(registerSchema), async (req: Re
       },
     });
 
-    logger.info('Email verification link generated');
+    await sendVerificationEmail(email, emailVerificationToken);
+    logger.info('Email verification link generated and sent');
     const { password: _, ...safeUser } = user;
     res.status(201).json({ user: safeUser });
 

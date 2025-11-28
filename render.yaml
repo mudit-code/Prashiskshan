@@ -22,6 +22,21 @@ services:
           type: web
           name: prashikshan-frontend
           property: url
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        value: "noreply@prashikshan.com"
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: prashikshan-frontend
+          property: url
 
   - type: web
     name: prashikshan-frontend
