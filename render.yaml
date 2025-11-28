@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: prashikshan-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: prashikshan-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REFRESH_TOKEN_SECRET
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        fromService:
+          type: web
+          name: prashikshan-frontend
+          property: url
+
+  - type: web
+    name: prashikshan-frontend
+    env: node
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: prashikshan-backend
+          property: url
+
+databases:
+  - name: prashikshan-db
+    plan: free
+    databaseName: prashikshan
+    user: prashikshan_user
+
+version: "1"
