@@ -1,6 +1,10 @@
 import nodemailer from 'nodemailer';
 import logger from '../logger.js';
 
+if (!process.env.SMTP_HOST) {
+    logger.warn('SMTP_HOST is not defined in .env. Email sending will fail.');
+}
+
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT) || 587,
