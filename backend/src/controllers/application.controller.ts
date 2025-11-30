@@ -80,7 +80,7 @@ export const getInternshipApplications = async (req: Request, res: Response) => 
                             select: {
                                 mobileNumber: true,
                                 education: true,
-                                skills: true // Assuming skills exist in student profile or we need to add it? 
+
                                 // Checked schema: StudentProfile doesn't have 'skills' field explicitly in the schema I saw earlier?
                                 // Wait, let me check schema again. 
                                 // StudentProfile has education, certifications, etc.

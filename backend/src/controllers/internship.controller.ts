@@ -117,7 +117,7 @@ export const getInternshipById = async (req: Request, res: Response) => {
                             select: {
                                 companyLogoUrl: true,
                                 websiteUrl: true,
-                                description: true // Assuming description exists or similar field
+
                             }
                         }
                     }
