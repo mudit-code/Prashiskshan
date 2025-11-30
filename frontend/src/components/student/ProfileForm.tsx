@@ -304,13 +304,25 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
 
         if (currentStep === 1) {
             const { personal } = formData;
-            if (isInvalid(personal.fatherFirstName) || isInvalid(personal.fatherLastName) ||
-                isInvalid(personal.motherFirstName) || isInvalid(personal.motherLastName) ||
-                isInvalid(personal.mobileNumber) || isInvalid(personal.gender) ||
-                isInvalid(personal.dob) ||
-                isInvalid(personal.address.city) || isInvalid(personal.address.state) || isInvalid(personal.address.pinCode) ||
-                isInvalid(personal.govIdType) || isInvalid(personal.govIdNumber)) {
-                alert('Please fill in all required fields in Personal Details, including Government ID.');
+            const missingFields = [];
+            if (isInvalid(personal.firstName)) missingFields.push('First Name');
+            if (isInvalid(personal.lastName)) missingFields.push('Last Name');
+            if (isInvalid(personal.fatherFirstName)) missingFields.push("Father's First Name");
+            if (isInvalid(personal.fatherLastName)) missingFields.push("Father's Last Name");
+            if (isInvalid(personal.motherFirstName)) missingFields.push("Mother's First Name");
+            if (isInvalid(personal.motherLastName)) missingFields.push("Mother's Last Name");
+            if (isInvalid(personal.mobileNumber)) missingFields.push('Mobile Number');
+            if (isInvalid(personal.gender)) missingFields.push('Gender');
+            if (isInvalid(personal.dob)) missingFields.push('Date of Birth');
+            if (isInvalid(personal.address.city)) missingFields.push('City');
+            if (isInvalid(personal.address.state)) missingFields.push('State');
+            if (isInvalid(personal.address.pinCode)) missingFields.push('PIN Code');
+            if (isInvalid(personal.govIdType)) missingFields.push('Government ID Type');
+            if (isInvalid(personal.govIdNumber)) missingFields.push('Government ID Number');
+            if (!formData.collegeId) missingFields.push('College Selection');
+
+            if (missingFields.length > 0) {
+                alert(`Please fill in the following required fields:\n- ${missingFields.join('\n- ')}`);
                 return false;
             }
         }

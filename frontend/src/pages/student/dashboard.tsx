@@ -52,7 +52,7 @@ interface StudentDashboardProps {
 const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user }) => {
   const router = useRouter();
   const { tab } = router.query;
-  const [activeTab, setActiveTab] = useState<'opportunities' | 'applications' | 'certificates' | 'logbook' | 'skills' | 'mentorship'>('opportunities');
+  const [activeTab, setActiveTab] = useState<'opportunities' | 'internships' | 'applications' | 'certificates' | 'logbook' | 'skills' | 'mentorship'>('opportunities');
 
   useEffect(() => {
     if (tab && typeof tab === 'string') {
