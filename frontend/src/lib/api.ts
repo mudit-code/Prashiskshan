@@ -65,7 +65,16 @@ api.interceptors.response.use(
 
 // Auth API
 export const authAPI = {
-  register: async (data: { email: string; password: string; name: string; roleId: number; collegeName?: string; companyName?: string }) => {
+  register: async (data: {
+    email: string;
+    password: string;
+    name: string;
+    roleId: number;
+    collegeName?: string;
+    companyName?: string;
+    aisheCode?: string;
+    collegeWebsite?: string;
+  }) => {
     const response = await publicApi.post('/auth/register', data);
     return response.data;
   },
@@ -119,7 +128,7 @@ export const internshipsAPI = {
     return response.data;
   },
 
-  create: async (data: { title: string; description: string }) => {
+  create: async (data: any) => {
     const response = await api.post('/internships', data);
     return response.data;
   },
@@ -135,12 +144,12 @@ export const internshipsAPI = {
 
   // Company specific
   getCompanyInternships: async () => {
-    const response = await api.get('/api/company/internships');
+    const response = await api.get('/company/internships');
     return response.data;
   },
 
   getInternshipApplications: async (internshipId: number) => {
-    const response = await api.get(`/api/company/internships/${internshipId}/applications`);
+    const response = await api.get(`/company/internships/${internshipId}/applications`);
     return response.data;
   },
 };
@@ -158,7 +167,7 @@ export const applicationsAPI = {
   },
 
   updateStatus: async (applicationId: number, status: string) => {
-    const response = await api.put(`/api/company/applications/${applicationId}`, { status });
+    const response = await api.put(`/company/applications/${applicationId}`, { status });
     return response.data;
   },
 };
@@ -186,7 +195,7 @@ export const logbooksAPI = {
 
   // Company specific
   getStudentLogbooks: async (studentId: number) => {
-    const response = await api.get(`/api/company/logbooks/${studentId}`);
+    const response = await api.get(`/company/logbooks/${studentId}`);
     return response.data;
   },
 };
@@ -201,6 +210,44 @@ export const rolesAPI = {
       { id: 2, name: 'Company' },
       { id: 3, name: 'Admin' },
     ];
+  },
+};
+
+export const studentAPI = {
+  getProfile: async () => {
+    const response = await api.get('/api/student/profile');
+    return response.data;
+  },
+  updateProfile: async (data: FormData) => {
+    const response = await api.post('/api/student/profile', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+  linkCollege: async (data: FormData) => {
+    const response = await api.post('/api/student/link-college', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+};
+
+export const collegeAPI = {
+  getList: async () => {
+    const response = await publicApi.get('/api/college/list');
+    return response.data;
+  },
+  getPendingStudents: async () => {
+    const response = await api.get('/api/college/pending-students');
+    return response.data;
+  },
+  getApprovedStudents: async () => {
+    const response = await api.get('/api/college/approved-students');
+    return response.data;
+  },
+  approveStudent: async (studentId: number, status: 'Approved' | 'Rejected') => {
+    const response = await api.post(`/api/college/approve-student/${studentId}`, { status });
+    return response.data;
   },
 };
 

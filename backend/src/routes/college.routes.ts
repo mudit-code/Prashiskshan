@@ -11,4 +11,12 @@ router.put('/profile', authMiddleware, upload.fields([
     { name: 'authLetter', maxCount: 1 }
 ]), updateCollegeProfile);
 
+// Student Approval Routes
+import { getPendingStudents, approveStudent, getAllColleges, getApprovedStudents } from '../controllers/college.controller.js';
+
+router.get('/pending-students', authMiddleware, getPendingStudents);
+router.get('/approved-students', authMiddleware, getApprovedStudents);
+router.post('/approve-student/:studentId', authMiddleware, approveStudent);
+router.get('/list', getAllColleges); // Public or authenticated? Let's keep it public for registration/profile
+
 export default router;

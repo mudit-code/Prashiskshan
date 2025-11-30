@@ -16,7 +16,7 @@ const transporter = nodemailer.createTransport({
 });
 
 export const sendVerificationEmail = async (to: string, token: string) => {
-    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${token}`;
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://127.0.0.1:3000'}/verify-email?token=${token}`;
 
     const mailOptions = {
         from: process.env.SMTP_FROM || '"Prashikshan" <noreply@prashikshan.com>',
@@ -37,4 +37,6 @@ export const sendVerificationEmail = async (to: string, token: string) => {
         logger.error('Error sending verification email:', error);
         // Don't throw error to prevent blocking registration, but log it
     }
+    // Always log the URL in dev mode or if email fails
+    logger.info(`Verification URL: ${verificationUrl}`);
 };

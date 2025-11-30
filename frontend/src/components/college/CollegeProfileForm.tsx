@@ -47,7 +47,7 @@ const CollegeProfileForm: React.FC<CollegeProfileFormProps> = ({ onSkip }) => {
     useEffect(() => {
         const fetchProfile = async () => {
             try {
-                const { data } = await api.get('/college/profile');
+                const { data } = await api.get('/api/college/profile');
                 if (data) {
                     setInitialData(data);
                     // Pre-fill form
@@ -87,14 +87,15 @@ const CollegeProfileForm: React.FC<CollegeProfileFormProps> = ({ onSkip }) => {
         formData.append('isCompleted', 'true');
 
         try {
-            await api.put('/college/profile', formData, {
+            await api.put('/api/college/profile', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
             alert('Profile updated successfully!');
             router.reload();
         } catch (error: any) {
-            console.error(error);
-            alert(error.response?.data?.error || 'Failed to update profile');
+            console.error('Profile update error:', error);
+            const errorMessage = error.response?.data?.error || error.message || 'Failed to update profile';
+            alert(`Error: ${errorMessage}`);
         } finally {
             setLoading(false);
         }

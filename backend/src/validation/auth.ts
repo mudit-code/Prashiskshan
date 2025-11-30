@@ -7,6 +7,8 @@ export const registerSchema = z.object({
   roleId: z.number(),
   collegeName: z.string().optional(),
   companyName: z.string().optional(),
+  aisheCode: z.string().optional(),
+  collegeWebsite: z.string().optional(),
 }).superRefine((data, ctx) => {
   if (data.roleId === 2 && !data.companyName) {
     ctx.addIssue({
@@ -15,12 +17,21 @@ export const registerSchema = z.object({
       path: ["companyName"],
     });
   }
-  if (data.roleId === 3 && !data.collegeName) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "College Name is required for College Admin role",
-      path: ["collegeName"],
-    });
+  if (data.roleId === 3) {
+    if (!data.collegeName) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "College Name is required for College Admin role",
+        path: ["collegeName"],
+      });
+    }
+    if (!data.aisheCode && !data.collegeWebsite) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Either AISHE Code or College Website is required",
+        path: ["aisheCode"],
+      });
+    }
   }
 });
 

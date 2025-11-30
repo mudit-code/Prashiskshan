@@ -28,6 +28,8 @@ const RegisterPage = () => {
     roleId: 1, // Default to Student
     collegeName: '',
     companyName: '',
+    aisheCode: '',
+    collegeWebsite: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -59,9 +61,15 @@ const RegisterPage = () => {
       return;
     }
 
-    if (formData.roleId === 3 && !formData.collegeName.trim()) {
-      setError('College Name is required');
-      return;
+    if (formData.roleId === 3) {
+      if (!formData.collegeName.trim()) {
+        setError('College Name is required');
+        return;
+      }
+      if (!formData.aisheCode.trim() && !formData.collegeWebsite.trim()) {
+        setError('Either AISHE Code or College Website is required');
+        return;
+      }
     }
 
     setLoading(true);
@@ -78,6 +86,8 @@ const RegisterPage = () => {
         roleId: formData.roleId,
         collegeName: formData.collegeName,
         companyName: formData.companyName,
+        aisheCode: formData.aisheCode,
+        collegeWebsite: formData.collegeWebsite,
       });
 
       // Show success message and redirect to login
@@ -227,23 +237,66 @@ const RegisterPage = () => {
 
             {/* College/Company Name (optional for now) */}
             {formData.roleId === 3 && (
-              <div>
-                <label htmlFor="collegeName" className="block text-sm font-semibold text-gray-700 mb-2">
-                  College Name
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaUniversity className="text-gray-400" />
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="collegeName" className="block text-sm font-semibold text-gray-700 mb-2">
+                    College Name
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FaUniversity className="text-gray-400" />
+                    </div>
+                    <input
+                      id="collegeName"
+                      type="text"
+                      value={formData.collegeName}
+                      onChange={(e) => setFormData({ ...formData, collegeName: e.target.value })}
+                      className="input-field pl-10"
+                      placeholder="Your College Name"
+                      required
+                    />
                   </div>
-                  <input
-                    id="collegeName"
-                    type="text"
-                    value={formData.collegeName}
-                    onChange={(e) => setFormData({ ...formData, collegeName: e.target.value })}
-                    className="input-field pl-10"
-                    placeholder="Your College Name"
-                    required
-                  />
+                </div>
+
+                <div>
+                  <label htmlFor="aisheCode" className="block text-sm font-semibold text-gray-700 mb-2">
+                    AISHE Code <span className="text-xs font-normal text-gray-500">(Required if no Website)</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Find your college AISHE code here in the <a href="https://dashboard.aishe.gov.in/hedirectory/#/hedirectory/universityDetails/C/ALL" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">official portal</a>.
+                  </p>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FaUniversity className="text-gray-400" />
+                    </div>
+                    <input
+                      id="aisheCode"
+                      type="text"
+                      value={formData.aisheCode}
+                      onChange={(e) => setFormData({ ...formData, aisheCode: e.target.value })}
+                      className="input-field pl-10"
+                      placeholder="AISHE Code (e.g., C-12345)"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="collegeWebsite" className="block text-sm font-semibold text-gray-700 mb-2">
+                    College Website <span className="text-xs font-normal text-gray-500">(Required if no AISHE Code)</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <FaUniversity className="text-gray-400" />
+                    </div>
+                    <input
+                      id="collegeWebsite"
+                      type="url"
+                      value={formData.collegeWebsite}
+                      onChange={(e) => setFormData({ ...formData, collegeWebsite: e.target.value })}
+                      className="input-field pl-10"
+                      placeholder="https://example.com"
+                    />
+                  </div>
                 </div>
               </div>
             )}

@@ -17,6 +17,18 @@ import {
   resetPasswordSchema,
 } from './validation/auth.js';
 import {
+  createInternship,
+  getEmployerInternships,
+  getAllInternships,
+  getInternshipById
+} from './controllers/internship.controller.js';
+import {
+  applyForInternship,
+  getInternshipApplications,
+  updateApplicationStatus,
+  getStudentApplications
+} from './controllers/application.controller.js';
+import {
   createInternshipSchema,
   updateInternshipSchema,
 } from './validation/internships.js';
@@ -76,12 +88,44 @@ const loginLimiter = rateLimit({
 app.get('/health', (_req: Request, res: Response) => res.json({ ok: true }));
 
 app.post('/auth/register', authLimiter, validate(registerSchema), async (req: Request, res: Response) => {
-  const { email, password, name, roleId } = req.body;
+  const { email, password, name, roleId, collegeName, companyName, aisheCode, collegeWebsite } = req.body;
 
   try {
     const role = await prisma.role.findUnique({ where: { id: Number(roleId) } });
     if (!role) {
       return res.status(400).json({ error: 'Invalid roleId' });
+    }
+
+    // Check for existing user with same email
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'User with this email already exists.' });
+    }
+
+    // If College Admin (roleId === 3), check for existing college or AISHE code
+    if (Number(roleId) === 3) {
+      const orConditions: any[] = [{ collegeName: collegeName }];
+      if (aisheCode) orConditions.push({ aisheCode: aisheCode });
+      if (collegeWebsite) orConditions.push({ collegeWebsite: collegeWebsite });
+
+      const existingCollege = await prisma.user.findFirst({
+        where: {
+          roleId: 3,
+          OR: orConditions
+        }
+      });
+
+      if (existingCollege) {
+        if (existingCollege.collegeName === collegeName) {
+          return res.status(400).json({ error: 'A College Admin is already registered for this College Name.' });
+        }
+        if (aisheCode && existingCollege.aisheCode === aisheCode) {
+          return res.status(400).json({ error: 'A College Admin is already registered with this AISHE Code.' });
+        }
+        if (collegeWebsite && existingCollege.collegeWebsite === collegeWebsite) {
+          return res.status(400).json({ error: 'A College Admin is already registered with this College Website.' });
+        }
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -93,8 +137,10 @@ app.post('/auth/register', authLimiter, validate(registerSchema), async (req: Re
         password: hashedPassword,
         name,
         roleId: Number(roleId),
-        collegeName: req.body.collegeName,
-        companyName: req.body.companyName,
+        collegeName,
+        companyName,
+        aisheCode: aisheCode || null, // Ensure empty string becomes null to avoid unique constraint violation
+        collegeWebsite,
         emailVerificationToken,
       },
     });
@@ -106,7 +152,7 @@ app.post('/auth/register', authLimiter, validate(registerSchema), async (req: Re
 
   } catch (error) {
     logger.error(error);
-    res.status(400).json({ error: 'User with this email already exists.' });
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Registration failed. Please try again.' });
   }
 });
 
@@ -151,7 +197,7 @@ app.post('/auth/login', loginLimiter, validate(loginSchema), async (req: Request
     });
 
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials.' });
+      return res.status(401).json({ error: 'User not found.' });
     }
 
     if (user.lockoutUntil && user.lockoutUntil > new Date()) {
@@ -180,7 +226,7 @@ app.post('/auth/login', loginLimiter, validate(loginSchema), async (req: Request
         },
       });
 
-      return res.status(401).json({ error: 'Invalid credentials.' });
+      return res.status(401).json({ error: 'Incorrect password.' });
     }
 
     // Reset failed attempts on successful login
@@ -215,7 +261,7 @@ app.post('/auth/login', loginLimiter, validate(loginSchema), async (req: Request
     res.json({ accessToken });
   } catch (error) {
     logger.error(error);
-    res.status(500).json({ error: 'Something went wrong.' });
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Something went wrong.' });
   }
 });
 
@@ -295,6 +341,7 @@ app.get('/auth/me', authMiddleware, async (req: Request, res: Response) => {
         name: true,
         email: true,
         role: true,
+        collegeId: true,
         createdAt: true,
       },
     });
@@ -390,54 +437,11 @@ app.post('/auth/reset-password', authLimiter, validate(resetPasswordSchema), asy
   }
 });
 
-app.post('/internships', authMiddleware, requireRole('Company', 'Admin'), validate(createInternshipSchema), async (req: Request, res: Response) => {
-  const { title, description } = req.body;
-  const { user } = req;
+app.post('/internships', authMiddleware, requireRole('Company', 'Admin'), validate(createInternshipSchema), createInternship);
 
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+app.get('/internships', getAllInternships);
 
-  try {
-    const internship = await prisma.internship.create({
-      data: {
-        title,
-        description,
-        postedById: user.id,
-      },
-    });
-    res.status(201).json(internship);
-  } catch (error) {
-    logger.error(error);
-    res.status(500).json({ error: 'Could not create internship' });
-  }
-});
-
-app.get('/internships', async (_req: Request, res: Response) => {
-  try {
-    const internships = await prisma.internship.findMany();
-    res.json(internships);
-  } catch (error) {
-    logger.error(error);
-    res.status(500).json({ error: 'Could not fetch internships' });
-  }
-});
-
-app.get('/internships/:id', async (req: Request, res: Response) => {
-  const { id } = req.params;
-  try {
-    const internship = await prisma.internship.findUnique({
-      where: { id: Number(id) },
-    });
-    if (!internship) {
-      return res.status(404).json({ error: 'Internship not found' });
-    }
-    res.json(internship);
-  } catch (error) {
-    logger.error(error);
-    res.status(500).json({ error: 'Could not fetch internship' });
-  }
-});
+app.get('/internships/:id', getInternshipById);
 
 app.put('/internships/:id', authMiddleware, requireRole('Company', 'Admin'), validate(updateInternshipSchema), async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -477,6 +481,28 @@ app.post('/applications', authMiddleware, requireRole('Student'), async (req: Re
   }
 
   try {
+    const internship = await prisma.internship.findUnique({
+      where: { id: internshipId },
+    });
+
+    if (!internship) {
+      return res.status(404).json({ error: 'Internship not found' });
+    }
+
+    if (internship.isCreditBased) {
+      if (!user.collegeId) {
+        return res.status(403).json({ error: 'You must be linked to a college to apply for credit-based internships.' });
+      }
+
+      const profile = await prisma.studentProfile.findUnique({
+        where: { userId: user.id },
+      });
+
+      if (!profile || profile.approvalStatus !== 'Approved') {
+        return res.status(403).json({ error: 'Your profile must be approved by your college to apply for credit-based internships.' });
+      }
+    }
+
     const application = await prisma.application.create({
       data: {
         internshipId,
@@ -604,23 +630,7 @@ app.get('/logbooks/:id/export', authMiddleware, requireRole('Student'), async (r
   }
 });
 
-app.get('/company/internships', authMiddleware, requireRole('Company'), async (req: Request, res: Response) => {
-  const { user } = req;
-
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  try {
-    const internships = await prisma.internship.findMany({
-      where: { postedById: user.id },
-    });
-    res.json(internships);
-  } catch (error) {
-    logger.error(error);
-    res.status(500).json({ error: 'Could not fetch internships' });
-  }
-});
+app.get('/company/internships', authMiddleware, requireRole('Company'), getEmployerInternships);
 
 app.get('/company/internships/:id/applications', authMiddleware, requireRole('Company'), async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -641,7 +651,21 @@ app.get('/company/internships/:id/applications', authMiddleware, requireRole('Co
 
     const applications = await prisma.application.findMany({
       where: { internshipId: Number(id) },
-      include: { student: true },
+      include: {
+        student: {
+          include: {
+            studentProfile: {
+              include: {
+                education: true,
+                workExperience: true,
+                certifications: true,
+                socialLinks: true,
+                address: true
+              }
+            }
+          }
+        }
+      },
     });
 
     res.json(applications);

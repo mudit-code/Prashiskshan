@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import { getStudentProfile, createOrUpdateProfile } from '../controllers/student.controller.js';
+import { getStudentProfile, createOrUpdateProfile, linkCollege } from '../controllers/student.controller.js';
 import { authMiddleware as authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -42,5 +42,6 @@ const uploadFields = [
 
 router.get('/profile', authenticateToken, getStudentProfile);
 router.post('/profile', authenticateToken, upload.any(), createOrUpdateProfile);
+router.post('/link-college', authenticateToken, upload.any(), linkCollege);
 
 export default router;

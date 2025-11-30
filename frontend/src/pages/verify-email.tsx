@@ -6,48 +6,69 @@ import Link from 'next/link';
 const VerifyEmail = () => {
     const router = useRouter();
     const { token } = router.query;
-    const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
+    const [status, setStatus] = useState('verifying');
     const [message, setMessage] = useState('');
 
     useEffect(() => {
-        if (!token) return;
+        console.log('VerifyEmail mounted, router.isReady:', router.isReady, 'token:', token);
+
+        if (!router.isReady) return;
+
+        const tokenStr = Array.isArray(token) ? token[0] : token;
+
+        if (!tokenStr) {
+            console.error('No token found');
+            setStatus('error');
+            setMessage('Invalid verification link.');
+            return;
+        }
 
         const verify = async () => {
             try {
-                await axios.get(`http://localhost:5000/auth/verify-email?token=${token}`);
+                console.log('Verifying token:', tokenStr);
+                const response = await axios.get(`http://localhost:5000/auth/verify-email?token=${tokenStr}`);
+                console.log('Verification success:', response.data);
                 setStatus('success');
             } catch (error: any) {
+                console.error('Verification failed:', error);
                 setStatus('error');
                 setMessage(error.response?.data?.error || 'Verification failed');
             }
         };
 
         verify();
-    }, [token]);
+    }, [router.isReady, token]);
 
-    if (status === 'verifying') return <div className="flex justify-center items-center h-screen text-xl font-semibold text-gray-600">Verifying...</div>;
+    console.log('Current status:', status);
+
+    if (status === 'verifying') {
+        return (
+            <div style={{ padding: '50px', textAlign: 'center' }}>
+                <h1>Verifying your email...</h1>
+                <p>Please wait.</p>
+            </div>
+        );
+    }
+
+    if (status === 'success') {
+        return (
+            <div style={{ padding: '50px', textAlign: 'center', color: 'green' }}>
+                <h1>Email Verified!</h1>
+                <p>Your email has been successfully verified.</p>
+                <Link href="/login" style={{ color: 'blue', textDecoration: 'underline' }}>
+                    Go to Login
+                </Link>
+            </div>
+        );
+    }
 
     return (
-        <div className="flex flex-col items-center justify-center h-screen bg-gray-50">
-            <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
-                {status === 'success' ? (
-                    <>
-                        <h1 className="text-2xl font-bold text-green-600 mb-4">Email Verified!</h1>
-                        <p className="text-gray-600 mb-6">Your email has been successfully verified.</p>
-                        <Link href="/login" className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                            Go to Login
-                        </Link>
-                    </>
-                ) : (
-                    <>
-                        <h1 className="text-2xl font-bold text-red-600 mb-4">Verification Failed</h1>
-                        <p className="text-gray-600 mb-6">{message}</p>
-                        <Link href="/login" className="text-blue-600 hover:underline">
-                            Back to Login
-                        </Link>
-                    </>
-                )}
-            </div>
+        <div style={{ padding: '50px', textAlign: 'center', color: 'red' }}>
+            <h1>Verification Failed</h1>
+            <p>{message}</p>
+            <Link href="/login" style={{ color: 'blue', textDecoration: 'underline' }}>
+                Back to Login
+            </Link>
         </div>
     );
 };

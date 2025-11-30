@@ -21,12 +21,17 @@ import {
   FaCalendarAlt,
 
   FaSignOutAlt,
-  FaUser
+  FaUser,
+  FaUserTimes,
+  FaBuilding,
+  FaMapMarkerAlt,
+  FaMoneyBillWave
 } from 'react-icons/fa';
-import { internshipsAPI, applicationsAPI, logbooksAPI, authAPI } from '../../lib/api';
+import { internshipsAPI, applicationsAPI, logbooksAPI, authAPI, studentAPI } from '../../lib/api';
 import withAuth from '../../components/withAuth';
 import ProfileForm from '../../components/student/ProfileForm';
 import ResumeView from '../../components/student/ResumeView';
+import CollegeVerificationForm from '../../components/student/CollegeVerificationForm';
 import axios from 'axios';
 
 interface StudentDashboardProps {
@@ -36,6 +41,7 @@ interface StudentDashboardProps {
     id: number;
     name: string;
     email: string;
+    collegeId?: number;
     role: {
       id: number;
       name: string;
@@ -70,8 +76,36 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user 
   const [searchTerm, setSearchTerm] = useState('');
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [showResumeView, setShowResumeView] = useState(false);
+  const [showVerificationForm, setShowVerificationForm] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [applyingId, setApplyingId] = useState<number | null>(null);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+
+  const handleApply = async (internshipId: number) => {
+    if (!resumeFile) {
+      alert('Please upload your resume first');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('internshipId', internshipId.toString());
+      formData.append('resume', resumeFile);
+
+      await applicationsAPI.create(internshipId);
+      alert('Application submitted successfully!');
+      setApplyingId(null);
+      setResumeFile(null);
+      fetchData();
+    } catch (error: any) {
+      console.error('Application error:', error);
+      alert(error.response?.data?.error || 'Failed to apply');
+    }
+  };
+
+
+  const [internships, setInternships] = useState<any[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -83,6 +117,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user 
       if (activeTab === 'opportunities') {
         const data = await internshipsAPI.getAll();
         setOpportunities(data);
+      } else if (activeTab === 'internships') {
+        const data = await internshipsAPI.getAll();
+        setInternships(data);
       } else if (activeTab === 'applications') {
         const data = await applicationsAPI.getMyApplications();
         setApplications(data);
@@ -178,22 +215,93 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user 
                 </button>
               </div>
             ) : (
-              <div onClick={() => setShowResumeView(true)} className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500 cursor-pointer hover:shadow-lg transition-shadow flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                  {profile.photoUrl ? (
-                    <img src={`http://localhost:5000${profile.photoUrl}`} alt="Profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <FaUser className="text-2xl text-gray-400" />
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-800">{profile.firstName} {profile.lastName}</h3>
-                  <p className="text-gray-600">Click to view your digital resume</p>
+              <div className="space-y-4">
+                {/* Approval Status Banner */}
+                {profile.approvalStatus === 'Pending' && (
+                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <FaClock className="h-5 w-5 text-yellow-400" aria-hidden="true" />
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-yellow-700">
+                          Your profile is pending approval from your college. You will be able to apply for internships once approved.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {profile.approvalStatus === 'Rejected' && (
+                  <div className="bg-red-50 border-l-4 border-red-400 p-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <FaUserTimes className="h-5 w-5 text-red-400" aria-hidden="true" />
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-red-700">
+                          Your profile was rejected by your college. Please contact your college admin for more details.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div onClick={() => setShowResumeView(true)} className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500 cursor-pointer hover:shadow-lg transition-shadow flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                    {profile.photoUrl ? (
+                      <img src={`http://localhost:5000${profile.photoUrl}`} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <FaUser className="text-2xl text-gray-400" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-800">{profile.firstName} {profile.lastName}</h3>
+                    <p className="text-gray-600">Click to view your digital resume</p>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${profile.approvalStatus === 'Approved' ? 'bg-green-100 text-green-800' : profile.approvalStatus === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                      Status: {profile.approvalStatus || 'Pending'}
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
           </div>
+
         )}
+
+        {/* Link College Section */}
+        {!user?.collegeId && (
+          <div className="mb-8 bg-blue-50 border-l-4 border-blue-500 p-6 rounded-lg shadow-sm flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-bold text-blue-900">Link to a College</h3>
+              <p className="text-blue-700">
+                Link your account to a college to apply for credit-based internships and get certified.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                if (!profile?.isCompleted) {
+                  alert('Please complete your profile first.');
+                  setShowProfileForm(true);
+                  return;
+                }
+                setShowVerificationForm(true);
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Link College
+            </button>
+          </div>
+        )}
+
+        <CollegeVerificationForm
+          isOpen={showVerificationForm}
+          onClose={() => setShowVerificationForm(false)}
+          onSuccess={() => {
+            alert('Verification request sent successfully! Please wait for approval.');
+            window.location.reload();
+          }}
+        />
 
         {showProfileForm && (
           <ProfileForm
@@ -387,6 +495,114 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user 
                 </div>
               )}
 
+              {/* Internships Tab (New) */}
+              {activeTab === 'internships' && (
+                <div className="space-y-6">
+                  <h2 className="text-2xl font-bold text-gray-800">Available Internships</h2>
+                  {loading ? (
+                    <div className="text-center py-10">Loading...</div>
+                  ) : internships.length === 0 ? (
+                    <div className="text-center py-10 text-gray-500">No internships available at the moment.</div>
+                  ) : (
+                    <div className="grid gap-6">
+                      {internships.map((internship) => (
+                        <motion.div
+                          key={internship.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex flex-col md:flex-row justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                {internship.postedBy?.companyProfile?.companyLogoUrl ? (
+                                  <img
+                                    src={internship.postedBy.companyProfile.companyLogoUrl}
+                                    alt="Logo"
+                                    className="w-10 h-10 rounded object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center">
+                                    <FaBuilding className="text-gray-400" />
+                                  </div>
+                                )}
+                                <div>
+                                  <h3 className="text-xl font-bold text-gray-800">{internship.title}</h3>
+                                  <p className="text-sm text-gray-600">{internship.postedBy?.companyName}</p>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap gap-4 text-sm text-gray-600 mt-3">
+                                <span className="flex items-center gap-1">
+                                  <FaMapMarkerAlt /> {internship.workMode === 'Remote' ? 'Remote' : internship.location}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <FaClock /> {internship.duration}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <FaMoneyBillWave /> {internship.stipendType === 'Paid' ? `₹${internship.stipendAmount}/mo` : internship.stipendType}
+                                </span>
+                              </div>
+
+                              <div className="mt-3">
+                                <p className="text-gray-700 line-clamp-2">{internship.description}</p>
+                              </div>
+
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {internship.skills.split(',').map((skill: string, idx: number) => (
+                                  <span key={idx} className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs">
+                                    {skill.trim()}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col items-end justify-between min-w-[150px]">
+                              <div className="text-sm text-gray-500">
+                                Apply by {new Date(internship.applicationDeadline).toLocaleDateString()}
+                              </div>
+
+                              {applyingId === internship.id ? (
+                                <div className="w-full mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">Upload Resume (PDF)</label>
+                                  <input
+                                    type="file"
+                                    accept=".pdf"
+                                    onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                                  />
+                                  <div className="flex gap-2 mt-3">
+                                    <button
+                                      onClick={() => setApplyingId(null)}
+                                      className="flex-1 px-3 py-2 text-sm text-gray-600 hover:bg-gray-200 rounded"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      onClick={() => handleApply(internship.id)}
+                                      className="flex-1 px-3 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700"
+                                    >
+                                      Submit
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setApplyingId(internship.id)}
+                                  className="btn-primary w-full mt-4"
+                                >
+                                  Apply Now
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Certificates Tab */}
               {activeTab === 'certificates' && (
                 <div className="space-y-4">
@@ -554,7 +770,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user 
           )}
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

@@ -132,6 +132,7 @@ export const createOrUpdateProfile = async (req: Request, res: Response) => {
             photoUrl: parsedData.photoUrl,
             signatureUrl: parsedData.signatureUrl,
             isCompleted: parsedData.isCompleted === 'true' || parsedData.isCompleted === true,
+            approvalStatus: 'Pending', // Reset to pending on update if critical fields change? Or just default.
             // For arrays (education, certifications, workExperience), we'll delete and recreate for simplicity
             education: {
                 deleteMany: {},
@@ -164,6 +165,7 @@ export const createOrUpdateProfile = async (req: Request, res: Response) => {
             photoUrl: parsedData.photoUrl,
             signatureUrl: parsedData.signatureUrl,
             isCompleted: parsedData.isCompleted === 'true' || parsedData.isCompleted === true,
+            approvalStatus: 'Pending',
             education: {
                 create: parsedData.education,
             },
@@ -174,6 +176,14 @@ export const createOrUpdateProfile = async (req: Request, res: Response) => {
                 create: parsedData.workExperience,
             },
         };
+
+        // Update User's collegeId if provided
+        if (parsedData.collegeId) {
+            await prisma.user.update({
+                where: { id: userId },
+                data: { collegeId: Number(parsedData.collegeId) }
+            });
+        }
 
         // Validate mandatory fields if marking as completed
         if (parsedData.isCompleted === 'true' || parsedData.isCompleted === true) {
@@ -236,5 +246,61 @@ export const createOrUpdateProfile = async (req: Request, res: Response) => {
         console.error('Error saving profile:', error);
         console.error('Request body:', req.body);
         res.status(500).json({ message: 'Server error', error: String(error) });
+    }
+};
+
+export const linkCollege = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user.id;
+        const { collegeId, rollNo, course, branch, year, section, collegeEmail } = req.body;
+
+        if (!collegeId) {
+            return res.status(400).json({ error: 'College ID is required' });
+        }
+
+        const college = await prisma.user.findUnique({
+            where: { id: Number(collegeId), roleId: 3 }, // Ensure it's a college admin
+        });
+
+        if (!college) {
+            return res.status(404).json({ error: 'College not found' });
+        }
+
+        // Handle ID Card upload
+        let collegeIdCardUrl = null;
+        const files = req.files as Express.Multer.File[] | undefined;
+        if (files && Array.isArray(files)) {
+            const idCardFile = files.find(f => f.fieldname === 'collegeIdCard');
+            if (idCardFile) {
+                collegeIdCardUrl = `/uploads/${idCardFile.filename}`;
+            }
+        }
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                collegeId: Number(collegeId),
+            },
+        });
+
+        // Update profile with verification details
+        await prisma.studentProfile.updateMany({
+            where: { userId },
+            data: {
+                approvalStatus: 'Pending',
+                rollNo,
+                course,
+                branch,
+                year,
+                section,
+                collegeEmail,
+                collegeIdCardUrl: collegeIdCardUrl || undefined
+            }
+        });
+
+        res.json({ message: 'College verification request sent successfully. Please wait for approval.' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
     }
 };

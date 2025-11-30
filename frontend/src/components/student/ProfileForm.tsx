@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUser, FaGraduationCap, FaBriefcase, FaIdCard, FaCheck, FaArrowRight, FaArrowLeft, FaUpload, FaCheckCircle, FaSpinner } from 'react-icons/fa';
-import { api } from '../../lib/api';
+import { api, collegeAPI } from '../../lib/api';
 
 interface ProfileFormProps {
     onComplete: () => void;
@@ -13,7 +13,9 @@ interface ProfileFormProps {
 const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialData, user }) => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [colleges, setColleges] = useState<any[]>([]);
     const [formData, setFormData] = useState<any>({
+        collegeId: '', // Add collegeId to root of formData
         personal: {
             firstName: '', middleName: '', lastName: '',
             fatherFirstName: '', fatherMiddleName: '', fatherLastName: '',
@@ -41,6 +43,20 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
             linkedin: '', github: '', portfolio: '', other: ''
         }
     });
+
+
+
+    useEffect(() => {
+        const fetchColleges = async () => {
+            try {
+                const list = await collegeAPI.getList();
+                setColleges(list);
+            } catch (error) {
+                console.error('Failed to fetch colleges', error);
+            }
+        };
+        fetchColleges();
+    }, []);
 
     useEffect(() => {
         if (initialData) {
@@ -251,13 +267,14 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
             formData.experience.workExperience.forEach((exp: any, index: number) => {
                 if (exp.experienceLetter) data.append(`experience_${index}_letter`, exp.experienceLetter);
             });
-
             // Social
             data.append('socialLinks', JSON.stringify(formData.social));
 
             // Uploads
             if (formData.uploads.photo) data.append('photo', formData.uploads.photo);
             if (formData.uploads.signature) data.append('signature', formData.uploads.signature);
+
+            if (formData.collegeId) data.append('collegeId', formData.collegeId);
 
             data.append('isCompleted', String(isCompleted));
 
@@ -448,6 +465,29 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
                     <input type="text" placeholder="Specify ID Type" className="input-field" value={formData.personal.govIdOther} onChange={(e) => handleInputChange('personal', 'govIdOther', e.target.value)} />
                 )}
                 <input type="text" placeholder="ID Number" className="input-field" value={formData.personal.govIdNumber} onChange={(e) => handleInputChange('personal', 'govIdNumber', e.target.value)} />
+            </div>
+
+            <h4 className="font-semibold">College Selection</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Your College *</label>
+                    <select
+                        className="input-field"
+                        value={formData.collegeId || ''}
+                        onChange={(e) => setFormData({ ...formData, collegeId: e.target.value })}
+                        required
+                    >
+                        <option value="">Select College</option>
+                        {colleges.map((college: any) => (
+                            <option key={college.id} value={college.id}>
+                                {college.collegeName} {college.aisheCode ? `(${college.aisheCode})` : ''}
+                            </option>
+                        ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                        Select the college you are currently enrolled in. This will send your profile for approval to the College Admin.
+                    </p>
+                </div>
             </div>
         </div >
     );

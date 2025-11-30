@@ -13,6 +13,9 @@ const withPWA = require("@ducanh2912/next-pwa").default({
 
 const nextConfig = {
     reactStrictMode: true,
+    devIndicators: {
+        buildActivity: false,
+    },
 };
 
 module.exports = withPWA(nextConfig);
