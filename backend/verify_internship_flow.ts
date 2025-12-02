@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 const BASE_URL = 'http://127.0.0.1:5000';
 
-async function login(email, password, role) {
+async function login(email: string, password: string, role: string) {
     const res = await fetch(`${BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -20,7 +20,7 @@ async function login(email, password, role) {
     }
 }
 
-async function verifyUser(email) {
+async function verifyUser(email: string) {
     console.log(`Verifying user ${email}...`);
     await prisma.user.update({
         where: { email },

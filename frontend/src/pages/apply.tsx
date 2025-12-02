@@ -5,11 +5,13 @@ import { api } from '../lib/api';
 import withAuth from '../components/withAuth';
 import { FaBriefcase, FaCheckCircle, FaTimesCircle, FaSpinner } from 'react-icons/fa';
 import { applicationsAPI, internshipsAPI } from '../lib/api';
+import { InternshipDetailsSkeleton } from '../components/skeletons/InternshipDetailsSkeleton';
 
 const ApplyPage = () => {
   const router = useRouter();
   const { id } = router.query;
   const [loading, setLoading] = useState(false);
+  const [fetchingLoading, setFetchingLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [internship, setInternship] = useState<any>(null);
@@ -26,12 +28,14 @@ const ApplyPage = () => {
       setInternship(data);
     } catch (error) {
       console.error('Error fetching internship:', error);
+    } finally {
+      setFetchingLoading(false);
     }
   };
 
   const handleApply = async () => {
     if (!id) return;
-    
+
     setLoading(true);
     setError('');
     setMessage('');
@@ -48,6 +52,14 @@ const ApplyPage = () => {
     }
   };
 
+  if (fetchingLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <InternshipDetailsSkeleton />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl w-full">
@@ -60,11 +72,11 @@ const ApplyPage = () => {
           <div className="inline-flex items-center justify-center w-20 h-20 bg-primary-100 rounded-full mb-6">
             <FaBriefcase className="text-4xl text-primary-600" />
           </div>
-          
+
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
             Apply for Internship
           </h1>
-          
+
           {internship && (
             <div className="bg-gray-50 rounded-lg p-6 mb-6 text-left">
               <h3 className="text-xl font-bold text-gray-900 mb-2">{internship.title}</h3>
@@ -121,9 +133,8 @@ const ApplyPage = () => {
           <button
             onClick={handleApply}
             disabled={loading || !!message || !id}
-            className={`w-full btn-primary py-3 text-lg ${
-              loading || message || !id ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+            className={`w-full btn-primary py-3 text-lg ${loading || message || !id ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

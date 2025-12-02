@@ -20,16 +20,19 @@ import {
   FaCheckDouble,
   FaSignOutAlt,
   FaUserClock,
-  FaChartBar
+  FaChartBar,
+  FaFileContract
 } from 'react-icons/fa';
 import { authAPI, collegeAPI } from '../../lib/api';
 import CollegeProfileForm from '../../components/college/CollegeProfileForm';
+import { CollegeDashboardSkeleton } from '../../components/skeletons/CollegeDashboardSkeleton';
+import { TableSkeleton } from '../../components/skeletons/TableSkeleton';
 import axios from 'axios';
 
 const AdminDashboard = () => {
   const router = useRouter();
   const { tab } = router.query;
-  const [activeTab, setActiveTab] = useState<'overview' | 'approvals' | 'students' | 'applications' | 'reports' | 'partners' | 'compliance' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'approvals' | 'students' | 'applications' | 'noc-requests' | 'reports' | 'partners' | 'compliance' | 'analytics'>('overview');
 
   useEffect(() => {
     if (tab && typeof tab === 'string') {
@@ -48,16 +51,17 @@ const AdminDashboard = () => {
 
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [pendingStudents, setPendingStudents] = useState<any[]>([]);
   const [approvedStudents, setApprovedStudents] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [showIdCardModal, setShowIdCardModal] = useState(false);
+  const [nocRequests, setNocRequests] = useState<any[]>([]);
 
   useEffect(() => {
     fetchProfile();
-    fetchPendingStudents();
-    fetchApprovedStudents();
+    fetchData();
   }, []);
 
   const fetchProfile = async () => {
@@ -71,6 +75,20 @@ const AdminDashboard = () => {
       console.log('Profile not found or error fetching');
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchPendingStudents(),
+        fetchPendingStudents(),
+        fetchApprovedStudents(),
+        fetchNocRequests()
+      ]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -92,12 +110,31 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchNocRequests = async () => {
+    try {
+      const data = await collegeAPI.getNOCRequests();
+      setNocRequests(data);
+    } catch (error) {
+      console.error('Failed to fetch NOC requests', error);
+    }
+  };
+
+  const handleNOCUpdate = async (applicationId: number, status: 'Approved' | 'Rejected') => {
+    try {
+      await collegeAPI.updateNOCStatus(applicationId, status);
+      fetchNocRequests();
+      alert(`NOC ${status} successfully`);
+    } catch (error) {
+      console.error('Failed to update NOC status', error);
+      alert('Failed to update NOC status');
+    }
+  };
+
   const handleStudentApproval = async (studentId: number, status: 'Approved' | 'Rejected') => {
     try {
       await collegeAPI.approveStudent(studentId, status);
       // Refresh list
-      fetchPendingStudents();
-      fetchApprovedStudents();
+      fetchData();
       alert(`Student ${status} successfully`);
     } catch (error) {
       console.error('Failed to update student status', error);
@@ -107,47 +144,18 @@ const AdminDashboard = () => {
 
   // Mock data
   const stats = {
-    totalStudents: 450,
-    activeInternships: 120,
-    pendingApplications: 35,
-    completedInternships: 280,
+    totalStudents: approvedStudents.length + pendingStudents.length,
+    activeInternships: 120, // Mock
+    pendingApplications: pendingStudents.length, // Using pending students as proxy for now
+    nocRequests: nocRequests.filter(req => req.nocStatus === 'Requested').length,
+    completedInternships: 280, // Mock
   };
 
-  const students = [
-    {
-      id: 1,
-      name: 'John Doe',
-      email: 'john@example.com',
-      course: 'B.Tech CSE',
-      year: '3rd Year',
-      activeInternships: 1,
-      completedInternships: 2,
-      credits: 6,
-      status: 'active',
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      course: 'B.Tech ECE',
-      year: '4th Year',
-      activeInternships: 0,
-      completedInternships: 3,
-      credits: 9,
-      status: 'active',
-    },
-    {
-      id: 3,
-      name: 'Bob Johnson',
-      email: 'bob@example.com',
-      course: 'B.Tech ME',
-      year: '2nd Year',
-      activeInternships: 1,
-      completedInternships: 0,
-      credits: 0,
-      status: 'active',
-    },
-  ];
+  // ... (students array removed as it was mock and unused/confusing with real data) ...
+
+  // ... (pendingApplications array removed if unused, but it is used in render) ...
+  // Wait, pendingApplications was mock data. I should probably keep it for now or replace with real data if available.
+  // The render uses `pendingApplications`. I'll keep the mock array for now but `stats` uses real lengths.
 
   const pendingApplications = [
     {
@@ -167,6 +175,10 @@ const AdminDashboard = () => {
       studentCredits: 3,
     },
   ];
+
+  if (profileLoading) {
+    return <CollegeDashboardSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -241,30 +253,44 @@ const AdminDashboard = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          {[
-            { label: 'Total Students', value: stats.totalStudents, icon: FaUsers, color: 'blue' },
-            { label: 'Active Internships', value: stats.activeInternships, icon: FaClock, color: 'yellow' },
-            { label: 'Pending Applications', value: stats.pendingApplications, icon: FaFileAlt, color: 'orange' },
-            { label: 'Completed', value: stats.completedInternships, icon: FaCheckCircle, color: 'green' },
-          ].map((stat, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: idx * 0.1 }}
-              className="card"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                  <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-                </div>
-                <div className={`w-12 h-12 bg-${stat.color}-100 rounded-full flex items-center justify-center`}>
-                  <stat.icon className={`text-2xl text-${stat.color}-600`} />
+          {loading ? (
+            [1, 2, 3, 4].map((i) => (
+              <div key={i} className="card animate-pulse">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="h-4 w-24 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-8 w-16 bg-gray-200 rounded"></div>
+                  </div>
+                  <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
                 </div>
               </div>
-            </motion.div>
-          ))}
+            ))
+          ) : (
+            [
+              { label: 'Total Students', value: stats.totalStudents, icon: FaUsers, color: 'blue' },
+              { label: 'Pending Approvals', value: stats.pendingApplications, icon: FaUserClock, color: 'yellow' },
+              { label: 'NOC Requests', value: stats.nocRequests, icon: FaFileContract, color: 'purple' },
+              { label: 'Completed', value: stats.completedInternships, icon: FaCheckCircle, color: 'green' },
+            ].map((stat, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: idx * 0.1 }}
+                className="card"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
+                    <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                  </div>
+                  <div className={`w-12 h-12 bg-${stat.color}-100 rounded-full flex items-center justify-center`}>
+                    <stat.icon className={`text-2xl text-${stat.color}-600`} />
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          )}
         </div>
 
         {/* Tabs */}
@@ -275,7 +301,9 @@ const AdminDashboard = () => {
                 { id: 'overview', label: 'Overview', icon: FaChartLine },
                 { id: 'approvals', label: 'Student Approvals', icon: FaUserClock },
                 { id: 'students', label: 'Students', icon: FaUsers },
+                { id: 'students', label: 'Students', icon: FaUsers },
                 { id: 'applications', label: 'Pending Applications', icon: FaFileAlt },
+                { id: 'noc-requests', label: 'NOC Requests', icon: FaFileContract },
                 { id: 'reports', label: 'Reports', icon: FaDownload },
                 { id: 'partners', label: 'Industry Partners', icon: FaHandshake },
                 { id: 'compliance', label: 'NEP Compliance', icon: FaCheckDouble },
@@ -341,7 +369,9 @@ const AdminDashboard = () => {
           {activeTab === 'approvals' && (
             <div className="space-y-4">
               <h3 className="text-xl font-bold text-gray-900 mb-4">Pending Student Approvals</h3>
-              {pendingStudents.length === 0 ? (
+              {loading ? (
+                <TableSkeleton rows={3} columns={1} />
+              ) : pendingStudents.length === 0 ? (
                 <div className="card text-center py-12">
                   <p className="text-gray-600">No pending student approvals</p>
                 </div>
@@ -448,7 +478,13 @@ const AdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {approvedStudents.length === 0 ? (
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-4">
+                          <TableSkeleton rows={5} columns={6} />
+                        </td>
+                      </tr>
+                    ) : approvedStudents.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="px-6 py-4 text-center text-gray-500">No approved students found</td>
                       </tr>
@@ -522,6 +558,65 @@ const AdminDashboard = () => {
                   </div>
                 </motion.div>
               ))}
+            </div>
+          )}
+
+          {/* NOC Requests Tab */}
+          {activeTab === 'noc-requests' && (
+            <div className="space-y-4">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">NOC Requests</h3>
+              {loading ? (
+                <TableSkeleton rows={3} columns={1} />
+              ) : nocRequests.length === 0 ? (
+                <div className="card text-center py-12">
+                  <p className="text-gray-600">No NOC requests found</p>
+                </div>
+              ) : (
+                nocRequests.map((req, idx) => (
+                  <motion.div
+                    key={req.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: idx * 0.1 }}
+                    className="card"
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="text-xl font-bold text-gray-900">{req.student.name}</h3>
+                          <span className={`px-2 py-1 text-xs rounded-full ${req.nocStatus === 'Requested' ? 'bg-yellow-100 text-yellow-800' :
+                            req.nocStatus === 'Approved' ? 'bg-green-100 text-green-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                            {req.nocStatus}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1"><strong>Internship:</strong> {req.internship.title} at {req.internship.postedBy.companyName}</p>
+                        <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                          <span>Roll No: {req.student.studentProfile?.rollNo || 'N/A'}</span>
+                          <span>Course: {req.student.studentProfile?.course || 'N/A'}</span>
+                        </div>
+                      </div>
+                      {req.nocStatus === 'Requested' && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleNOCUpdate(req.id, 'Approved')}
+                            className="btn-primary flex items-center gap-2"
+                          >
+                            <FaCheckCircle /> Approve
+                          </button>
+                          <button
+                            onClick={() => handleNOCUpdate(req.id, 'Rejected')}
+                            className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors flex items-center gap-2"
+                          >
+                            <FaUserTimes /> Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))
+              )}
             </div>
           )}
 
@@ -651,42 +746,44 @@ const AdminDashboard = () => {
         </div>
       </div>
       {/* ID Card Modal */}
-      {showIdCardModal && selectedStudent && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={() => setShowIdCardModal(false)}>
-          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="text-xl font-bold">College ID Card: {selectedStudent.firstName} {selectedStudent.lastName}</h3>
-              <button onClick={() => setShowIdCardModal(false)} className="text-gray-500 hover:text-gray-700">
-                <FaUserTimes className="text-xl" />
-              </button>
-            </div>
-            <div className="p-4 flex-1 overflow-auto flex justify-center bg-gray-100">
-              {selectedStudent.collegeIdCardUrl ? (
-                selectedStudent.collegeIdCardUrl.endsWith('.pdf') ? (
-                  <iframe src={`http://localhost:5000${selectedStudent.collegeIdCardUrl}`} className="w-full h-[60vh]" title="ID Card PDF" />
+      {
+        showIdCardModal && selectedStudent && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={() => setShowIdCardModal(false)}>
+            <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="p-4 border-b flex justify-between items-center">
+                <h3 className="text-xl font-bold">College ID Card: {selectedStudent.firstName} {selectedStudent.lastName}</h3>
+                <button onClick={() => setShowIdCardModal(false)} className="text-gray-500 hover:text-gray-700">
+                  <FaUserTimes className="text-xl" />
+                </button>
+              </div>
+              <div className="p-4 flex-1 overflow-auto flex justify-center bg-gray-100">
+                {selectedStudent.collegeIdCardUrl ? (
+                  selectedStudent.collegeIdCardUrl.endsWith('.pdf') ? (
+                    <iframe src={`http://localhost:5000${selectedStudent.collegeIdCardUrl}`} className="w-full h-[60vh]" title="ID Card PDF" />
+                  ) : (
+                    <img src={`http://localhost:5000${selectedStudent.collegeIdCardUrl}`} alt="ID Card" className="max-w-full max-h-[70vh] object-contain" />
+                  )
                 ) : (
-                  <img src={`http://localhost:5000${selectedStudent.collegeIdCardUrl}`} alt="ID Card" className="max-w-full max-h-[70vh] object-contain" />
-                )
-              ) : (
-                <p>No ID Card uploaded</p>
-              )}
-            </div>
-            <div className="p-4 border-t flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  handleStudentApproval(selectedStudent.id, 'Approved');
-                  setShowIdCardModal(false);
-                }}
-                className="btn-primary"
-              >
-                Approve Student
-              </button>
-              <button onClick={() => setShowIdCardModal(false)} className="btn-secondary">Close</button>
+                  <p>No ID Card uploaded</p>
+                )}
+              </div>
+              <div className="p-4 border-t flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    handleStudentApproval(selectedStudent.id, 'Approved');
+                    setShowIdCardModal(false);
+                  }}
+                  className="btn-primary"
+                >
+                  Approve Student
+                </button>
+                <button onClick={() => setShowIdCardModal(false)} className="btn-secondary">Close</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
 
   );
 };

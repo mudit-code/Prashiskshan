@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { jwtDecode } from 'jwt-decode';
 import React from 'react';
 import { authAPI } from '../lib/api';
+import FullScreenLoader from './FullScreenLoader';
 
 interface DecodedToken {
   userId: string;
@@ -98,14 +99,7 @@ const withAuth = <P extends object>(
     }, [router]);
 
     if (loading) {
-      return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading...</p>
-          </div>
-        </div>
-      );
+      return <FullScreenLoader />;
     }
 
     if (userId && role) {

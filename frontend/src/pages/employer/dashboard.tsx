@@ -13,12 +13,15 @@ import {
   FaSignOutAlt,
   FaBuilding
 } from 'react-icons/fa';
-import { authAPI } from '../../lib/api';
+import { authAPI, API_URL } from '../../lib/api';
 import CompanyProfileForm from '../../components/company/CompanyProfileForm';
 import PostInternshipForm from '../../components/employer/PostInternshipForm';
 import StudentProfileModal from '../../components/employer/StudentProfileModal';
 import { internshipsAPI, applicationsAPI } from '../../lib/api';
 import withAuth from '../../components/withAuth';
+import { InternshipCardSkeleton } from '../../components/skeletons/InternshipCardSkeleton';
+import { ApplicantCardSkeleton } from '../../components/skeletons/ApplicantCardSkeleton';
+import { EmployerDashboardSkeleton } from '../../components/skeletons/EmployerDashboardSkeleton';
 
 interface EmployerDashboardProps {
   user?: {
@@ -42,6 +45,11 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ user }) => {
   const [selectedInternship, setSelectedInternship] = useState<number | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  useEffect(() => {
+    fetchInternships();
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'internships') {
@@ -67,6 +75,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ user }) => {
       console.error('Failed to fetch internships:', error);
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -135,50 +144,75 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ user }) => {
       case 'overview':
         return (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <motion.div
-              whileHover={{ y: -5 }}
-              className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-blue-100 rounded-lg text-blue-600">
-                  <FaBriefcase className="text-xl" />
+            {loading ? (
+              <>
+                {[1, 2].map((i) => (
+                  <div key={i} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 animate-pulse">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+                      <div className="h-4 w-24 bg-gray-200 rounded"></div>
+                    </div>
+                    <div className="h-10 w-16 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 w-32 bg-gray-200 rounded"></div>
+                  </div>
+                ))}
+                <div className="bg-gradient-to-br from-primary-600 to-primary-700 p-6 rounded-xl shadow-lg text-white animate-pulse">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-12 h-12 bg-white/20 rounded-lg"></div>
+                    <div className="h-4 w-24 bg-white/20 rounded"></div>
+                  </div>
+                  <div className="h-8 w-48 bg-white/20 rounded mb-2"></div>
+                  <div className="h-4 w-32 bg-white/20 rounded"></div>
                 </div>
-                <span className="text-sm text-gray-500">Total Posted</span>
-              </div>
-              <h3 className="text-3xl font-bold text-gray-800">{internships.length}</h3>
-              <p className="text-sm text-gray-500 mt-2">Active Internships</p>
-            </motion.div>
+              </>
+            ) : (
+              <>
+                <motion.div
+                  whileHover={{ y: -5 }}
+                  className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 bg-blue-100 rounded-lg text-blue-600">
+                      <FaBriefcase className="text-xl" />
+                    </div>
+                    <span className="text-sm text-gray-500">Total Posted</span>
+                  </div>
+                  <h3 className="text-3xl font-bold text-gray-800">{internships.length}</h3>
+                  <p className="text-sm text-gray-500 mt-2">Active Internships</p>
+                </motion.div>
 
-            <motion.div
-              whileHover={{ y: -5 }}
-              className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-green-100 rounded-lg text-green-600">
-                  <FaUsers className="text-xl" />
-                </div>
-                <span className="text-sm text-gray-500">Total Applicants</span>
-              </div>
-              <h3 className="text-3xl font-bold text-gray-800">
-                {internships.reduce((acc, curr) => acc + (curr._count?.applications || 0), 0)}
-              </h3>
-              <p className="text-sm text-gray-500 mt-2">Across all roles</p>
-            </motion.div>
+                <motion.div
+                  whileHover={{ y: -5 }}
+                  className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 bg-green-100 rounded-lg text-green-600">
+                      <FaUsers className="text-xl" />
+                    </div>
+                    <span className="text-sm text-gray-500">Total Applicants</span>
+                  </div>
+                  <h3 className="text-3xl font-bold text-gray-800">
+                    {internships.reduce((acc, curr) => acc + (curr._count?.applications || 0), 0)}
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-2">Across all roles</p>
+                </motion.div>
 
-            <motion.div
-              whileHover={{ y: -5 }}
-              onClick={() => setShowPostInternship(true)}
-              className="bg-gradient-to-br from-primary-600 to-primary-700 p-6 rounded-xl shadow-lg text-white cursor-pointer"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-white/20 rounded-lg">
-                  <FaPlus className="text-xl" />
-                </div>
-                <span className="text-sm text-white/80">Quick Action</span>
-              </div>
-              <h3 className="text-2xl font-bold mb-1">Post New Internship</h3>
-              <p className="text-sm text-white/80">Find your next talent</p>
-            </motion.div>
+                <motion.div
+                  whileHover={{ y: -5 }}
+                  onClick={() => setShowPostInternship(true)}
+                  className="bg-gradient-to-br from-primary-600 to-primary-700 p-6 rounded-xl shadow-lg text-white cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 bg-white/20 rounded-lg">
+                      <FaPlus className="text-xl" />
+                    </div>
+                    <span className="text-sm text-white/80">Quick Action</span>
+                  </div>
+                  <h3 className="text-2xl font-bold mb-1">Post New Internship</h3>
+                  <p className="text-sm text-white/80">Find your next talent</p>
+                </motion.div>
+              </>
+            )}
           </div>
         );
 
@@ -196,7 +230,11 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ user }) => {
             </div>
 
             {loading ? (
-              <div className="text-center py-10">Loading...</div>
+              <div className="grid gap-4">
+                {[1, 2, 3].map((i) => (
+                  <InternshipCardSkeleton key={i} />
+                ))}
+              </div>
             ) : internships.length === 0 ? (
               <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-300">
                 <FaBriefcase className="mx-auto text-4xl text-gray-300 mb-4" />
@@ -276,8 +314,10 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ user }) => {
             </div>
 
             {loading ? (
-              <div className="flex justify-center items-center py-12">
-                <FaSpinner className="animate-spin text-4xl text-purple-600" />
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <ApplicantCardSkeleton key={i} />
+                ))}
               </div>
             ) : (
               <div className="space-y-4">
@@ -327,7 +367,7 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ user }) => {
                             </button>
                             {applicant.resumeUrl && (
                               <a
-                                href={`http://localhost:5000/${applicant.resumeUrl}`}
+                                href={`${API_URL}${applicant.resumeUrl.startsWith('/') ? '' : '/'}${applicant.resumeUrl}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-primary-600 hover:underline flex items-center gap-1 text-sm"
@@ -372,6 +412,10 @@ const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ user }) => {
         return null;
     }
   };
+
+  if (initialLoading) {
+    return <EmployerDashboardSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

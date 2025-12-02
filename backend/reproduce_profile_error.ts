@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { Blob } from 'buffer';
+
 
 async function reproduce() {
     try {
@@ -15,7 +15,7 @@ async function reproduce() {
             return;
         }
 
-        const { accessToken } = await loginRes.json();
+        const { accessToken } = (await loginRes.json()) as any;
         console.log('Login successful. Token:', accessToken);
 
         // 2. Update Profile with Large File

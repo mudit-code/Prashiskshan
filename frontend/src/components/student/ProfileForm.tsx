@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUser, FaGraduationCap, FaBriefcase, FaIdCard, FaCheck, FaArrowRight, FaArrowLeft, FaUpload, FaCheckCircle, FaSpinner } from 'react-icons/fa';
 import { api, collegeAPI } from '../../lib/api';
+import { FormSkeleton } from '../skeletons/FormSkeleton';
 
 interface ProfileFormProps {
     onComplete: () => void;
@@ -13,6 +14,7 @@ interface ProfileFormProps {
 const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialData, user }) => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(true);
     const [colleges, setColleges] = useState<any[]>([]);
     const [formData, setFormData] = useState<any>({
         collegeId: '', // Add collegeId to root of formData
@@ -53,6 +55,8 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
                 setColleges(list);
             } catch (error) {
                 console.error('Failed to fetch colleges', error);
+            } finally {
+                setInitialLoading(false);
             }
         };
         fetchColleges();
@@ -760,6 +764,14 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ onComplete, onSkip, initialDa
             </div>
         </div>
     );
+
+    if (initialLoading) {
+        return (
+            <div className="fixed inset-0 z-50 bg-white flex flex-col p-8">
+                <FormSkeleton fields={6} />
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 z-50 bg-white flex flex-col">

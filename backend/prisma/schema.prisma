@@ -282,6 +282,9 @@ model Application {
   resumeUrl      String?
   coverLetter    String?
   offerLetterUrl String?
+  nocStatus      String?    // "Requested", "Approved", "Rejected"
+
+  @@unique([internshipId, studentId])
 }
 
 model Logbook {

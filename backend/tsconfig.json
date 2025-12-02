@@ -27,7 +27,8 @@
     "check_tokens.ts",
     "reproduce_issue.ts",
     "test_profile_fix.ts",
-    "reproduce_step1.ts"
+    "reproduce_step1.ts",
+    "reproduce_profile_error.ts"
   ],
   "exclude": [
     "node_modules",

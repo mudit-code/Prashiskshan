@@ -26,7 +26,8 @@ import {
   applyForInternship,
   getInternshipApplications,
   updateApplicationStatus,
-  getStudentApplications
+  getStudentApplications,
+  requestNOC
 } from './controllers/application.controller.js';
 import {
   createInternshipSchema,
@@ -535,6 +536,8 @@ app.get('/applications', authMiddleware, requireRole('Student'), async (req: Req
     res.status(500).json({ error: 'Could not fetch applications' });
   }
 });
+
+app.post('/applications/:applicationId/request-noc', authMiddleware, requireRole('Student'), requestNOC);
 
 app.get('/logbooks', authMiddleware, requireRole('Student'), async (req: Request, res: Response) => {
   const { user } = req;

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import Link from 'next/link';
+import { ContentSkeleton } from '../components/skeletons/ContentSkeleton';
 
 const VerifyEmail = () => {
     const router = useRouter();
@@ -43,9 +44,16 @@ const VerifyEmail = () => {
 
     if (status === 'verifying') {
         return (
-            <div style={{ padding: '50px', textAlign: 'center' }}>
-                <h1>Verifying your email...</h1>
-                <p>Please wait.</p>
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+                <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow">
+                    <div className="text-center">
+                        <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Verifying Email</h2>
+                        <p className="mt-2 text-sm text-gray-600">Please wait while we verify your email address...</p>
+                    </div>
+                    <div className="mt-8 space-y-6">
+                        <ContentSkeleton lines={3} />
+                    </div>
+                </div>
             </div>
         );
     }

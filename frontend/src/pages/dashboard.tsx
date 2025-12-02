@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import withAuth from '../components/withAuth';
+import FullScreenLoader from '../components/FullScreenLoader';
 
 const Dashboard = ({ user }: any) => {
     const router = useRouter();
@@ -24,14 +25,7 @@ const Dashboard = ({ user }: any) => {
         }
     }, [user]);
 
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Redirecting to your dashboard...</p>
-            </div>
-        </div>
-    );
+    return <FullScreenLoader />;
 };
 
 export default withAuth(Dashboard);

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000';
 console.log('API_URL:', API_URL);
 
 const api = axios.create({
@@ -170,6 +170,11 @@ export const applicationsAPI = {
     const response = await api.put(`/company/applications/${applicationId}`, { status });
     return response.data;
   },
+
+  requestNOC: async (applicationId: number) => {
+    const response = await api.post(`/applications/${applicationId}/request-noc`);
+    return response.data;
+  },
 };
 
 // Logbooks API
@@ -247,6 +252,14 @@ export const collegeAPI = {
   },
   approveStudent: async (studentId: number, status: 'Approved' | 'Rejected') => {
     const response = await api.post(`/api/college/approve-student/${studentId}`, { status });
+    return response.data;
+  },
+  getNOCRequests: async () => {
+    const response = await api.get('/api/college/noc-requests');
+    return response.data;
+  },
+  updateNOCStatus: async (applicationId: number, status: 'Approved' | 'Rejected') => {
+    const response = await api.put(`/api/college/noc-requests/${applicationId}`, { status });
     return response.data;
   },
 };

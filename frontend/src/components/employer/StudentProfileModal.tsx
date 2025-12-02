@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaUser, FaGraduationCap, FaBriefcase, FaCertificate, FaEnvelope, FaPhone, FaMapMarkerAlt, FaLinkedin, FaGithub, FaGlobe } from 'react-icons/fa';
+import { API_URL } from '../../lib/api';
 
 interface StudentProfileModalProps {
     isOpen: boolean;
@@ -40,7 +41,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
                             <div className="w-32 h-32 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden border-4 border-white shadow-lg">
                                 {studentProfile?.photoUrl ? (
                                     <img
-                                        src={studentProfile.photoUrl.startsWith('http') ? studentProfile.photoUrl : `http://localhost:5000/${studentProfile.photoUrl}`}
+                                        src={studentProfile.photoUrl.startsWith('http') ? studentProfile.photoUrl : `${API_URL}${studentProfile.photoUrl}`}
                                         alt="Profile"
                                         className="w-full h-full object-cover"
                                         onError={(e) => {
@@ -177,7 +178,7 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ isOpen, onClo
                                             </p>
                                             {cert.certificateUrl && (
                                                 <a
-                                                    href={cert.certificateUrl.startsWith('http') ? cert.certificateUrl : `http://localhost:5000/${cert.certificateUrl}`}
+                                                    href={cert.certificateUrl.startsWith('http') ? cert.certificateUrl : `${API_URL}${cert.certificateUrl}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-xs text-primary-600 hover:underline mt-2 inline-block"

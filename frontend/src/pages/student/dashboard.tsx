@@ -25,13 +25,18 @@ import {
   FaUserTimes,
   FaBuilding,
   FaMapMarkerAlt,
-  FaMoneyBillWave
+  FaMoneyBillWave,
+  FaFileContract
 } from 'react-icons/fa';
 import { internshipsAPI, applicationsAPI, logbooksAPI, authAPI, studentAPI } from '../../lib/api';
 import withAuth from '../../components/withAuth';
 import ProfileForm from '../../components/student/ProfileForm';
 import ResumeView from '../../components/student/ResumeView';
 import CollegeVerificationForm from '../../components/student/CollegeVerificationForm';
+import InternshipDetailsModal from '../../components/student/InternshipDetailsModal';
+import { InternshipCardSkeleton } from '../../components/skeletons/InternshipCardSkeleton';
+import { StudentDashboardSkeleton } from '../../components/skeletons/StudentDashboardSkeleton';
+import { ContentSkeleton } from '../../components/skeletons/ContentSkeleton';
 import axios from 'axios';
 
 interface StudentDashboardProps {
@@ -81,9 +86,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user 
   const [profileLoading, setProfileLoading] = useState(true);
   const [applyingId, setApplyingId] = useState<number | null>(null);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [selectedInternship, setSelectedInternship] = useState<any>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
-  const handleApply = async (internshipId: number) => {
-    if (!resumeFile) {
+  const handleApply = async (internshipId: number, file?: File | null) => {
+    const fileToUpload = file || resumeFile;
+    if (!fileToUpload) {
       alert('Please upload your resume first');
       return;
     }
@@ -91,7 +99,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user 
     try {
       const formData = new FormData();
       formData.append('internshipId', internshipId.toString());
-      formData.append('resume', resumeFile);
+      formData.append('resume', fileToUpload);
 
       await applicationsAPI.create(internshipId);
       alert('Application submitted successfully!');
@@ -101,6 +109,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user 
     } catch (error: any) {
       console.error('Application error:', error);
       alert(error.response?.data?.error || 'Failed to apply');
+    }
+  };
+
+  const handleRequestNOC = async (applicationId: number) => {
+    try {
+      await applicationsAPI.requestNOC(applicationId);
+      alert('NOC requested successfully!');
+      fetchData();
+    } catch (error: any) {
+      console.error('NOC request error:', error);
+      alert(error.response?.data?.error || 'Failed to request NOC');
     }
   };
 
@@ -115,11 +134,19 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user 
     setLoading(true);
     try {
       if (activeTab === 'opportunities') {
-        const data = await internshipsAPI.getAll();
-        setOpportunities(data);
+        const [internshipsData, applicationsData] = await Promise.all([
+          internshipsAPI.getAll(),
+          applicationsAPI.getMyApplications()
+        ]);
+        setOpportunities(internshipsData);
+        setApplications(applicationsData);
       } else if (activeTab === 'internships') {
-        const data = await internshipsAPI.getAll();
-        setInternships(data);
+        const [internshipsData, applicationsData] = await Promise.all([
+          internshipsAPI.getAll(),
+          applicationsAPI.getMyApplications()
+        ]);
+        setInternships(internshipsData);
+        setApplications(applicationsData);
       } else if (activeTab === 'applications') {
         const data = await applicationsAPI.getMyApplications();
         setApplications(data);
@@ -172,6 +199,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user 
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
+
+  if (profileLoading) {
+    return <StudentDashboardSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -325,32 +356,58 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user 
             }}
           />
         )}
+
+        <InternshipDetailsModal
+          isOpen={showDetailsModal}
+          onClose={() => setShowDetailsModal(false)}
+          internship={selectedInternship}
+          isApplied={selectedInternship && applications.some(app => app.internshipId === selectedInternship.id)}
+          onApply={(id, file) => {
+            handleApply(id, file);
+            setShowDetailsModal(false);
+          }}
+        />
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          {[
-            { label: 'Total Applications', value: stats.totalApplications, icon: FaFileAlt, color: 'blue' },
-            { label: 'Active Internships', value: stats.activeInternships, icon: FaBriefcase, color: 'green' },
-            { label: 'Completed', value: stats.completedInternships, icon: FaCheckCircle, color: 'purple' },
-            { label: 'Total Credits', value: stats.totalCredits, icon: FaGraduationCap, color: 'orange' },
-          ].map((stat, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: idx * 0.1 }}
-              className="card"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                  <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
-                </div>
-                <div className={`w-12 h-12 bg-${stat.color}-100 rounded-full flex items-center justify-center`}>
-                  <stat.icon className={`text-2xl text-${stat.color}-600`} />
+          {loading ? (
+            [1, 2, 3, 4].map((i) => (
+              <div key={i} className="card animate-pulse">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="h-4 w-24 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-8 w-16 bg-gray-200 rounded"></div>
+                  </div>
+                  <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
                 </div>
               </div>
-            </motion.div>
-          ))}
+            ))
+          ) : (
+            [
+              { label: 'Total Applications', value: stats.totalApplications, icon: FaFileAlt, color: 'blue' },
+              { label: 'Active Internships', value: stats.activeInternships, icon: FaBriefcase, color: 'green' },
+              { label: 'Completed', value: stats.completedInternships, icon: FaCheckCircle, color: 'purple' },
+              { label: 'Total Credits', value: stats.totalCredits, icon: FaGraduationCap, color: 'orange' },
+            ].map((stat, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: idx * 0.1 }}
+                className="card"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
+                    <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                  </div>
+                  <div className={`w-12 h-12 bg-${stat.color}-100 rounded-full flex items-center justify-center`}>
+                    <stat.icon className={`text-2xl text-${stat.color}-600`} />
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          )}
         </div>
 
         {/* Tabs */}
@@ -383,109 +440,82 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user 
 
         {/* Tab Content */}
         <div className="space-y-6">
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <FaSpinner className="animate-spin text-4xl text-primary-600" />
-            </div>
-          ) : (
-            <>
-              {/* Opportunities Tab */}
-              {activeTab === 'opportunities' && (
-                <div>
-                  {/* Search */}
-                  <div className="card mb-6">
-                    <div className="flex flex-col md:flex-row gap-4">
-                      <div className="flex-1 relative">
-                        <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Search internships..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="input-field pl-10"
-                        />
-                      </div>
+          <>
+            {/* Opportunities Tab */}
+            {activeTab === 'opportunities' && (
+              <div>
+                {/* Search */}
+                <div className="card mb-6">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 relative">
+                      <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search internships..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="input-field pl-10"
+                      />
                     </div>
                   </div>
+                </div>
 
-                  {/* Opportunities List */}
-                  <div className="space-y-4">
-                    {filteredOpportunities.length === 0 ? (
-                      <div className="card text-center py-12">
-                        <p className="text-gray-600">No internships found</p>
-                      </div>
-                    ) : (
-                      filteredOpportunities.map((opp, idx) => (
-                        <motion.div
-                          key={opp.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.5, delay: idx * 0.1 }}
-                          className="card hover:shadow-xl transition-shadow"
-                        >
-                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div className="flex-1">
-                              <h3 className="text-xl font-bold text-gray-900 mb-2">{opp.title}</h3>
-                              <p className="text-gray-600 mb-3">{opp.description}</p>
-                              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                                <span className="flex items-center gap-1">
-                                  <FaClock /> Posted {formatDate(opp.createdAt)}
-                                </span>
-                              </div>
+                {/* Opportunities List */}
+                <div className="space-y-4">
+                  {loading ? (
+                    <div className="grid gap-6">
+                      {[1, 2, 3].map((i) => (
+                        <InternshipCardSkeleton key={i} />
+                      ))}
+                    </div>
+                  ) : filteredOpportunities.length === 0 ? (
+                    <div className="card text-center py-12">
+                      <p className="text-gray-600">No internships found</p>
+                    </div>
+                  ) : (
+                    filteredOpportunities.map((opp, idx) => (
+                      <motion.div
+                        key={opp.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: idx * 0.1 }}
+                        className="card hover:shadow-xl transition-shadow"
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div className="flex-1">
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">{opp.title}</h3>
+                            <p className="text-gray-600 mb-3">{opp.description}</p>
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                              <span className="flex items-center gap-1">
+                                <FaClock /> Posted {formatDate(opp.createdAt)}
+                              </span>
                             </div>
-                            <div className="flex gap-2">
+                          </div>
+                          <div className="flex gap-2">
+                            {applications.some(app => app.internshipId === opp.id) ? (
+                              <button
+                                disabled
+                                className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed font-medium"
+                              >
+                                Applied
+                              </button>
+                            ) : (
                               <Link
                                 href={`/apply?id=${opp.id}`}
                                 className="btn-primary whitespace-nowrap"
                               >
                                 Apply Now
                               </Link>
-                              <button className="btn-secondary">
-                                <FaEye />
-                              </button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
+                            )}
 
-              {/* Applications Tab */}
-              {activeTab === 'applications' && (
-                <div className="space-y-4">
-                  {applications.length === 0 ? (
-                    <div className="card text-center py-12">
-                      <p className="text-gray-600">No applications yet</p>
-                    </div>
-                  ) : (
-                    applications.map((app, idx) => (
-                      <motion.div
-                        key={app.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: idx * 0.1 }}
-                        className="card"
-                      >
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                          <div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-1">{app.internship?.title || 'N/A'}</h3>
-                            <p className="text-sm text-gray-500">Applied on {formatDate(app.createdAt)}</p>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <span
-                              className={`px-4 py-2 rounded-full text-sm font-semibold ${app.status === 'Accepted'
-                                ? 'bg-green-100 text-green-700'
-                                : app.status === 'Rejected'
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-yellow-100 text-yellow-700'
-                                }`}
+                            <button
+                              onClick={() => {
+                                setSelectedInternship(opp);
+                                setShowDetailsModal(true);
+                              }}
+                              className="btn-secondary"
                             >
-                              {app.status}
-                            </span>
-                            <button className="btn-secondary">
-                              <FaEye /> View
+                              <FaEye />
                             </button>
                           </div>
                         </div>
@@ -493,210 +523,306 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user 
                     ))
                   )}
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Internships Tab (New) */}
-              {activeTab === 'internships' && (
-                <div className="space-y-6">
-                  <h2 className="text-2xl font-bold text-gray-800">Available Internships</h2>
-                  {loading ? (
-                    <div className="text-center py-10">Loading...</div>
-                  ) : internships.length === 0 ? (
-                    <div className="text-center py-10 text-gray-500">No internships available at the moment.</div>
-                  ) : (
-                    <div className="grid gap-6">
-                      {internships.map((internship) => (
-                        <motion.div
-                          key={internship.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex flex-col md:flex-row justify-between gap-4">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                {internship.postedBy?.companyProfile?.companyLogoUrl ? (
-                                  <img
-                                    src={internship.postedBy.companyProfile.companyLogoUrl}
-                                    alt="Logo"
-                                    className="w-10 h-10 rounded object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center">
-                                    <FaBuilding className="text-gray-400" />
-                                  </div>
-                                )}
-                                <div>
-                                  <h3 className="text-xl font-bold text-gray-800">{internship.title}</h3>
-                                  <p className="text-sm text-gray-600">{internship.postedBy?.companyName}</p>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-wrap gap-4 text-sm text-gray-600 mt-3">
-                                <span className="flex items-center gap-1">
-                                  <FaMapMarkerAlt /> {internship.workMode === 'Remote' ? 'Remote' : internship.location}
+            {/* Applications Tab */}
+            {activeTab === 'applications' && (
+              <div className="space-y-4">
+                {loading ? (
+                  <div className="grid gap-6">
+                    {[1, 2].map((i) => (
+                      <InternshipCardSkeleton key={i} />
+                    ))}
+                  </div>
+                ) : applications.length === 0 ? (
+                  <div className="card text-center py-12">
+                    <p className="text-gray-600">No applications yet</p>
+                  </div>
+                ) : (
+                  applications.map((app, idx) => (
+                    <motion.div
+                      key={app.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: idx * 0.1 }}
+                      className="card"
+                    >
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-900 mb-1">{app.internship?.title || 'N/A'}</h3>
+                          <p className="text-sm text-gray-500">Applied on {formatDate(app.createdAt)}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          {app.status === 'Accepted' && (
+                            <div className="mr-2">
+                              {app.nocStatus ? (
+                                <span className={`px-3 py-1 rounded-full text-xs font-medium ${app.nocStatus === 'Approved' ? 'bg-green-100 text-green-800' :
+                                    app.nocStatus === 'Rejected' ? 'bg-red-100 text-red-800' :
+                                      'bg-purple-100 text-purple-800'
+                                  }`}>
+                                  NOC: {app.nocStatus}
                                 </span>
-                                <span className="flex items-center gap-1">
-                                  <FaClock /> {internship.duration}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <FaMoneyBillWave /> {internship.stipendType === 'Paid' ? `₹${internship.stipendAmount}/mo` : internship.stipendType}
-                                </span>
-                              </div>
-
-                              <div className="mt-3">
-                                <p className="text-gray-700 line-clamp-2">{internship.description}</p>
-                              </div>
-
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                {internship.skills.split(',').map((skill: string, idx: number) => (
-                                  <span key={idx} className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs">
-                                    {skill.trim()}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="flex flex-col items-end justify-between min-w-[150px]">
-                              <div className="text-sm text-gray-500">
-                                Apply by {new Date(internship.applicationDeadline).toLocaleDateString()}
-                              </div>
-
-                              {applyingId === internship.id ? (
-                                <div className="w-full mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">Upload Resume (PDF)</label>
-                                  <input
-                                    type="file"
-                                    accept=".pdf"
-                                    onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
-                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
-                                  />
-                                  <div className="flex gap-2 mt-3">
-                                    <button
-                                      onClick={() => setApplyingId(null)}
-                                      className="flex-1 px-3 py-2 text-sm text-gray-600 hover:bg-gray-200 rounded"
-                                    >
-                                      Cancel
-                                    </button>
-                                    <button
-                                      onClick={() => handleApply(internship.id)}
-                                      className="flex-1 px-3 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700"
-                                    >
-                                      Submit
-                                    </button>
-                                  </div>
-                                </div>
                               ) : (
                                 <button
-                                  onClick={() => setApplyingId(internship.id)}
-                                  className="btn-primary w-full mt-4"
+                                  onClick={() => handleRequestNOC(app.id)}
+                                  className="flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm font-medium"
                                 >
-                                  Apply Now
+                                  <FaFileContract /> Request NOC
                                 </button>
                               )}
                             </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                          )}
+                          <span
+                            className={`px-4 py-2 rounded-full text-sm font-semibold ${app.status === 'Accepted'
+                              ? 'bg-green-100 text-green-700'
+                              : app.status === 'Rejected'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                              }`}
+                          >
+                            {app.status}
+                          </span>
+                          <button className="btn-secondary">
+                            <FaEye /> View
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            )}
 
-              {/* Certificates Tab */}
-              {activeTab === 'certificates' && (
-                <div className="space-y-4">
-                  {certificates.length === 0 ? (
-                    <div className="card text-center py-12">
-                      <p className="text-gray-600">No certificates yet</p>
-                    </div>
-                  ) : (
-                    certificates.map((cert, idx) => (
+            {/* Internships Tab (New) */}
+            {activeTab === 'internships' && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-gray-800">Available Internships</h2>
+                {loading ? (
+                  <div className="grid gap-6">
+                    {[1, 2, 3].map((i) => (
+                      <InternshipCardSkeleton key={i} />
+                    ))}
+                  </div>
+                ) : internships.length === 0 ? (
+                  <div className="text-center py-10 text-gray-500">No internships available at the moment.</div>
+                ) : (
+                  <div className="grid gap-6">
+                    {internships.map((internship) => (
                       <motion.div
-                        key={cert.id}
+                        key={internship.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: idx * 0.1 }}
-                        className="card"
+                        className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
                       >
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                          <div className="flex items-start gap-4">
-                            <div className="w-16 h-16 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <FaCertificate className="text-3xl text-primary-600" />
-                            </div>
-                            <div>
-                              <h3 className="text-xl font-bold text-gray-900 mb-1">{cert.title}</h3>
-                              <p className="text-gray-600 mb-2">{cert.company}</p>
-                              <div className="flex items-center gap-4 text-sm">
-                                <span className="text-gray-500">Completed: {cert.completionDate}</span>
-                                <span className="flex items-center gap-1 text-primary-600 font-semibold">
-                                  <FaAward /> {cert.credits} Credits
-                                </span>
+                        <div className="flex flex-col md:flex-row justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              {internship.postedBy?.companyProfile?.companyLogoUrl ? (
+                                <img
+                                  src={internship.postedBy.companyProfile.companyLogoUrl}
+                                  alt="Logo"
+                                  className="w-10 h-10 rounded object-cover"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center">
+                                  <FaBuilding className="text-gray-400" />
+                                </div>
+                              )}
+                              <div>
+                                <h3 className="text-xl font-bold text-gray-800">{internship.title}</h3>
+                                <p className="text-sm text-gray-600">{internship.postedBy?.companyName}</p>
                               </div>
                             </div>
+
+                            <div className="flex flex-wrap gap-4 text-sm text-gray-600 mt-3">
+                              <span className="flex items-center gap-1">
+                                <FaMapMarkerAlt /> {internship.workMode === 'Remote' ? 'Remote' : internship.location}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <FaClock /> {internship.duration}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <FaMoneyBillWave /> {internship.stipendType === 'Paid' ? `₹${internship.stipendAmount}/mo` : internship.stipendType}
+                              </span>
+                            </div>
+
+                            <div className="mt-3">
+                              <p className="text-gray-700 line-clamp-2">{internship.description}</p>
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {internship.skills.split(',').map((skill: string, idx: number) => (
+                                <span key={idx} className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs">
+                                  {skill.trim()}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                          <div className="flex gap-2">
-                            <button className="btn-primary">
-                              <FaDownload /> Download
-                            </button>
-                            <button className="btn-secondary">
-                              <FaEye /> View
-                            </button>
+
+                          <div className="flex flex-col items-end justify-between min-w-[150px]">
+                            <div className="text-sm text-gray-500">
+                              Apply by {new Date(internship.applicationDeadline).toLocaleDateString()}
+                            </div>
+
+                            {applyingId === internship.id ? (
+                              <div className="w-full mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Upload Resume (PDF)</label>
+                                <input
+                                  type="file"
+                                  accept=".pdf"
+                                  onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+                                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                                />
+                                <div className="flex gap-2 mt-3">
+                                  <button
+                                    onClick={() => setApplyingId(null)}
+                                    className="flex-1 px-3 py-2 text-sm text-gray-600 hover:bg-gray-200 rounded"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    onClick={() => handleApply(internship.id)}
+                                    className="flex-1 px-3 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700"
+                                  >
+                                    Submit
+                                  </button>
+                                </div>
+                              </div>
+                            ) : applications.some(app => app.internshipId === internship.id) ? (
+                              <button
+                                disabled
+                                className="w-full mt-4 px-4 py-2 bg-gray-300 text-gray-600 rounded-lg cursor-not-allowed font-medium"
+                              >
+                                Applied
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setApplyingId(internship.id)}
+                                className="btn-primary w-full mt-4"
+                              >
+                                Apply Now
+                              </button>
+                            )}
                           </div>
                         </div>
                       </motion.div>
-                    ))
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Certificates Tab */}
+            {activeTab === 'certificates' && (
+              <div className="space-y-4">
+                {loading ? (
+                  <div className="grid gap-6">
+                    {[1, 2].map((i) => (
+                      <InternshipCardSkeleton key={i} />
+                    ))}
+                  </div>
+                ) : certificates.length === 0 ? (
+                  <div className="card text-center py-12">
+                    <p className="text-gray-600">No certificates yet</p>
+                  </div>
+                ) : (
+                  certificates.map((cert, idx) => (
+                    <motion.div
+                      key={cert.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: idx * 0.1 }}
+                      className="card"
+                    >
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="w-16 h-16 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <FaCertificate className="text-3xl text-primary-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-1">{cert.title}</h3>
+                            <p className="text-gray-600 mb-2">{cert.company}</p>
+                            <div className="flex items-center gap-4 text-sm">
+                              <span className="text-gray-500">Completed: {cert.completionDate}</span>
+                              <span className="flex items-center gap-1 text-primary-600 font-semibold">
+                                <FaAward /> {cert.credits} Credits
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button className="btn-primary">
+                            <FaDownload /> Download
+                          </button>
+                          <button className="btn-secondary">
+                            <FaEye /> View
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Logbook Tab */}
+            {activeTab === 'logbook' && (
+              <div>
+                <div className="card mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-gray-900">Auto-Generated Logbook</h3>
+                    <Link href="/logbook" className="btn-primary">
+                      <FaBook /> View Full Logbook
+                    </Link>
+                  </div>
+                  <p className="text-gray-600 mb-4">
+                    Your logbook entries are automatically generated based on your internship activities.
+                  </p>
+                  {loading ? (
+                    <ContentSkeleton lines={2} />
+                  ) : logbooks.length > 0 ? (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-sm text-gray-500 mb-2">Recent Entry</p>
+                      <p className="text-gray-700">
+                        <strong>Date:</strong> {formatDate(logbooks[0].date)} | <strong>Activity:</strong> {logbooks[0].entry}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <p className="text-gray-600">No logbook entries yet</p>
+                    </div>
                   )}
                 </div>
-              )}
-
-              {/* Logbook Tab */}
-              {activeTab === 'logbook' && (
-                <div>
-                  <div className="card mb-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-bold text-gray-900">Auto-Generated Logbook</h3>
-                      <Link href="/logbook" className="btn-primary">
-                        <FaBook /> View Full Logbook
-                      </Link>
-                    </div>
-                    <p className="text-gray-600 mb-4">
-                      Your logbook entries are automatically generated based on your internship activities.
-                    </p>
-                    {logbooks.length > 0 ? (
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <p className="text-sm text-gray-500 mb-2">Recent Entry</p>
-                        <p className="text-gray-700">
-                          <strong>Date:</strong> {formatDate(logbooks[0].date)} | <strong>Activity:</strong> {logbooks[0].entry}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <p className="text-gray-600">No logbook entries yet</p>
-                      </div>
-                    )}
-                  </div>
-                  <div className="card">
-                    <h3 className="text-xl font-bold text-gray-900 mb-4">Generate Report</h3>
-                    <p className="text-gray-600 mb-4">
-                      Generate a comprehensive report of your internship activities.
-                    </p>
-                    <button className="btn-primary">
-                      <FaDownload /> Generate Report
-                    </button>
-                  </div>
+                <div className="card">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">Generate Report</h3>
+                  <p className="text-gray-600 mb-4">
+                    Generate a comprehensive report of your internship activities.
+                  </p>
+                  <button className="btn-primary">
+                    <FaDownload /> Generate Report
+                  </button>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Skills Tab */}
-              {activeTab === 'skills' && (
-                <div className="space-y-6">
-                  <div className="card bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-500">
-                    <h3 className="text-xl font-bold text-yellow-800 mb-2">Skill Readiness Program</h3>
-                    <p className="text-yellow-700">Complete these modules to improve your internship chances.</p>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[
+            {/* Skills Tab */}
+            {activeTab === 'skills' && (
+              <div className="space-y-6">
+                <div className="card bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-500">
+                  <h3 className="text-xl font-bold text-yellow-800 mb-2">Skill Readiness Program</h3>
+                  <p className="text-yellow-700">Complete these modules to improve your internship chances.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {loading ? (
+                    <>
+                      <ContentSkeleton lines={3} />
+                      <ContentSkeleton lines={3} />
+                      <ContentSkeleton lines={3} />
+                      <ContentSkeleton lines={3} />
+                    </>
+                  ) : (
+                    [
                       { title: 'Professional Communication', progress: 80, total: 10, completed: 8 },
                       { title: 'Technical Interview Prep', progress: 40, total: 15, completed: 6 },
                       { title: 'Workplace Etiquette', progress: 0, total: 5, completed: 0 },
@@ -714,63 +840,72 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ userId, role, user 
                           {skill.progress === 100 ? 'Review' : skill.progress === 0 ? 'Start' : 'Continue'}
                         </button>
                       </div>
-                    ))}
-                  </div>
+                    ))
+                  )}
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Mentorship Tab */}
-              {activeTab === 'mentorship' && (
-                <div className="space-y-6">
-                  <div className="card">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6">My Mentor</h3>
-                    <div className="flex flex-col md:flex-row items-start gap-6">
-                      <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center">
-                        <FaChalkboardTeacher className="text-4xl text-gray-400" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-lg font-bold">Dr. Sarah Johnson</h4>
-                        <p className="text-gray-600 mb-2">Department of Computer Science</p>
-                        <p className="text-sm text-gray-500 mb-4">
-                          "I am here to guide you through your internship journey. Feel free to reach out for career advice or project help."
-                        </p>
-                        <div className="flex gap-3">
-                          <button className="btn-primary flex items-center gap-2">
-                            <FaVideo /> Schedule Meeting
-                          </button>
-                          <button className="btn-secondary flex items-center gap-2">
-                            <FaCalendarAlt /> View Schedule
-                          </button>
+            {/* Mentorship Tab */}
+            {activeTab === 'mentorship' && (
+              <div className="space-y-6">
+                {loading ? (
+                  <>
+                    <ContentSkeleton lines={4} image={true} />
+                    <ContentSkeleton lines={2} />
+                  </>
+                ) : (
+                  <>
+                    <div className="card">
+                      <h3 className="text-xl font-bold text-gray-900 mb-6">My Mentor</h3>
+                      <div className="flex flex-col md:flex-row items-start gap-6">
+                        <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center">
+                          <FaChalkboardTeacher className="text-4xl text-gray-400" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-lg font-bold">Dr. Sarah Johnson</h4>
+                          <p className="text-gray-600 mb-2">Department of Computer Science</p>
+                          <p className="text-sm text-gray-500 mb-4">
+                            "I am here to guide you through your internship journey. Feel free to reach out for career advice or project help."
+                          </p>
+                          <div className="flex gap-3">
+                            <button className="btn-primary flex items-center gap-2">
+                              <FaVideo /> Schedule Meeting
+                            </button>
+                            <button className="btn-secondary flex items-center gap-2">
+                              <FaCalendarAlt /> View Schedule
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="card">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Mentorship Sessions</h3>
-                    <div className="space-y-3">
-                      <div className="p-3 bg-gray-50 rounded border border-gray-200 flex justify-between items-center">
-                        <div>
-                          <p className="font-semibold">Internship Report Review</p>
-                          <p className="text-xs text-gray-500">Tomorrow, 10:00 AM</p>
+                    <div className="card">
+                      <h3 className="text-lg font-bold text-gray-900 mb-4">Mentorship Sessions</h3>
+                      <div className="space-y-3">
+                        <div className="p-3 bg-gray-50 rounded border border-gray-200 flex justify-between items-center">
+                          <div>
+                            <p className="font-semibold">Internship Report Review</p>
+                            <p className="text-xs text-gray-500">Tomorrow, 10:00 AM</p>
+                          </div>
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">Upcoming</span>
                         </div>
-                        <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">Upcoming</span>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded border border-gray-200 flex justify-between items-center">
-                        <div>
-                          <p className="font-semibold">Career Guidance</p>
-                          <p className="text-xs text-gray-500">Last Week</p>
+                        <div className="p-3 bg-gray-50 rounded border border-gray-200 flex justify-between items-center">
+                          <div>
+                            <p className="font-semibold">Career Guidance</p>
+                            <p className="text-xs text-gray-500">Last Week</p>
+                          </div>
+                          <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">Completed</span>
                         </div>
-                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">Completed</span>
                       </div>
                     </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+                  </>
+                )}
+              </div>
+            )}
+          </>
         </div>
       </div>
-    </div >
+    </div>
   );
 };
 

@@ -1,120 +1,82 @@
-# Tech Stack Comparison: Document vs Actual Implementation
+# Tech Stack Comparison Report
 
-## ✅ MATCHING Components
+This report compares the **Proposed Tech Stack** with the **Current Implementation** found in the codebase.
 
-### 1. Frontend
-| Document Spec | Actual Implementation | Status |
-|--------------|----------------------|--------|
-| React + TypeScript (Next.js) | ✅ Next.js 14.2.33, React 18.3.1, TypeScript 5.4.5 | ✅ **MATCHES** |
-| Responsive, PWA-ready | ✅ Tailwind CSS, responsive design implemented | ✅ **MATCHES** |
+## 📊 Summary Dashboard
 
-### 2. Backend
-| Document Spec | Actual Implementation | Status |
-|--------------|----------------------|--------|
-| Node.js (Express/NestJS) | ✅ Node.js with Express 4.21.2 | ✅ **MATCHES** |
-| REST APIs | ✅ REST API endpoints implemented | ✅ **MATCHES** |
-| TypeScript | ✅ TypeScript 5.9.3 | ✅ **MATCHES** |
+| Category | Feature | Status | Current Implementation |
+| :--- | :--- | :--- | :--- |
+| **Frontend** | Next.js + TypeScript | ✅ Matched | Next.js 14 + TypeScript 5.4 |
+| | TailwindCSS | ✅ Matched | TailwindCSS 3.4 |
+| | React Query | ❌ Missing | Not installed. Using `axios` + `useEffect` or Server Actions? |
+| | PWA | ✅ Matched | `@ducanh2912/next-pwa` installed |
+| **Mobile App** | Expo (React Native) | ❌ Missing | No mobile app codebase found |
+| **Backend** | NestJS | ❌ Different | **Express.js** is used instead of NestJS |
+| | Class-validator | ⚠️ Partial | **Zod** is used for validation (which is good, but different) |
+| **Database** | PostgreSQL (Supabase) | ❌ Different | **SQLite** (`file:./dev.db`) is currently configured in Prisma |
+| | Prisma ORM | ✅ Matched | Prisma is used |
+| **Auth** | Supabase / Auth0 / Keycloak | ❌ Different | **Custom JWT Auth** implemented (Bcrypt + JWT + Refresh Tokens) |
+| **Storage** | Supabase / S3 / R2 | ❌ Different | **Local Filesystem** (`/uploads` directory served statically) |
+| **Realtime** | Socket.IO + FCM | ❌ Missing | No realtime features implemented |
+| **Cache/Queue** | Redis + BullMQ | ❌ Missing | No caching or background job queues implemented |
+| **Infrastructure** | GitHub Actions | ✅ Matched | `.github/workflows/ci.yml` exists |
+| | Deployment | ✅ Matched | `render.yaml` exists for Backend. Frontend likely Vercel. |
+| **Testing** | Jest / Supertest / Playwright | ❌ Missing | No test scripts or test files found |
+| **Security** | HTTPS, HttpOnly Cookies | ✅ Matched | HttpOnly cookies used for refresh tokens |
+| | Rate Limiting | ✅ Matched | `express-rate-limit` implemented |
+| | Signed URLs | ❌ Missing | Public static file serving used instead |
 
-### 3. Database & ORM
-| Document Spec | Actual Implementation | Status |
-|--------------|----------------------|--------|
-| PostgreSQL with Prisma ORM | ⚠️ **SQLite** with Prisma ORM | ⚠️ **PARTIAL** |
-| Structured data storage | ✅ Prisma schema with proper relations | ✅ **MATCHES** |
+---
 
-### 4. Authentication
-| Document Spec | Actual Implementation | Status |
-|--------------|----------------------|--------|
-| Role-based access | ✅ Student, Company, Admin roles implemented | ✅ **MATCHES** |
-| Strict access control | ✅ JWT-based auth with role middleware | ✅ **MATCHES** |
-| OAuth 2.0 / SSO | ❌ **JWT tokens** (not OAuth/SSO) | ❌ **DIFFERENT** |
+## 🔍 Detailed Analysis
 
-## ❌ MISSING Components
+### 1. Frontend (Web)
+- **Current:** The frontend is a **Next.js 14** application with **TypeScript** and **TailwindCSS**.
+- **Missing:** **React Query** is not installed. The project likely relies on `useEffect` or Next.js data fetching methods.
+- **PWA:** PWA support is configured using `@ducanh2912/next-pwa`.
 
-### 1. File Storage
-| Document Spec | Actual Implementation | Status |
-|--------------|----------------------|--------|
-| AWS S3 or DigitalOcean Spaces | ❌ **Not implemented** | ❌ **MISSING** |
+### 2. Mobile App
+- **Current:** **None**. There is no `mobile` directory or React Native configuration in the codebase.
 
-### 2. Cache & Queue
-| Document Spec | Actual Implementation | Status |
-|--------------|----------------------|--------|
-| Redis and BullMQ | ❌ **Not implemented** | ❌ **MISSING** |
+### 3. Backend
+- **Current:** The backend is built with **Express.js**, not NestJS.
+- **Validation:** Uses **Zod** (`zod` package) for schema validation instead of `class-validator`.
+- **Logging:** Uses `winston` for logging.
 
-### 3. Analytics Layer
-| Document Spec | Actual Implementation | Status |
-|--------------|----------------------|--------|
-| Recharts or Chart.js | ❌ **Not implemented** | ❌ **MISSING** |
-| Real-time dashboards | ❌ **Not implemented** | ❌ **MISSING** |
+### 4. Database
+- **Current:** The project is configured to use **SQLite** (`provider = "sqlite"` in `schema.prisma`).
+- **Action Required:** To use Supabase/PostgreSQL, the `datasource` provider in `schema.prisma` needs to be changed to `postgresql` and the `DATABASE_URL` environment variable updated.
 
-### 4. Learning & Skill API
-| Document Spec | Actual Implementation | Status |
-|--------------|----------------------|--------|
-| MOOCs integration (SWAYAM, Coursera, Skill India) | ❌ **Not implemented** | ❌ **MISSING** |
+### 5. Authentication
+- **Current:** A custom authentication system is implemented using `bcrypt` for password hashing and `jsonwebtoken` for Access/Refresh tokens.
+- **Difference:** It does **not** use Supabase Auth, Auth0, or Keycloak.
 
-### 5. Additional Features
-| Document Spec | Actual Implementation | Status |
-|--------------|----------------------|--------|
-| NEP credit mapping | ⚠️ **Basic credit system** (not NEP-specific) | ⚠️ **PARTIAL** |
-| Auto-generated reports | ⚠️ **Basic logbook export** (not full reports) | ⚠️ **PARTIAL** |
-| Digilocker integration | ❌ **Not implemented** | ❌ **MISSING** |
-| AICTE integration | ❌ **Not implemented** | ❌ **MISSING** |
+### 6. File Storage
+- **Current:** Files are uploaded using `multer` and stored locally in the `uploads/` directory. They are served statically via Express.
+- **Difference:** No cloud storage (S3/Supabase) is integrated. This will not work well on serverless/ephemeral hosting (like Render Free Tier) as files will be lost on restart/redeploy.
 
-## 📊 Summary
+### 7. Realtime & Background Jobs
+- **Current:** No `socket.io` or `bullmq` dependencies found.
+- **Impact:** No realtime notifications or background processing capabilities currently exist.
 
-### ✅ Fully Implemented (6/15)
-- Frontend: React + TypeScript (Next.js) ✅
-- Backend: Node.js + Express ✅
-- Database: Prisma ORM ✅
-- Role-based Authentication ✅
-- REST APIs ✅
-- Responsive UI ✅
+### 8. Testing
+- **Current:** No testing framework (Jest, Supertest, Playwright) is set up. `package.json` scripts do not include test commands.
 
-### ⚠️ Partially Implemented (2/15)
-- Database: Using SQLite instead of PostgreSQL ⚠️
-- Credit System: Basic implementation, not NEP-specific ⚠️
+### 9. Security
+- **Implemented:**
+    - `helmet` for HTTP headers.
+    - `express-rate-limit` for API rate limiting.
+    - `cors` for Cross-Origin Resource Sharing.
+    - `bcrypt` for password hashing.
+    - HttpOnly cookies for refresh tokens.
+- **Missing:**
+    - Signed URLs for secure file access.
+    - CSP (Content Security Policy) needs careful configuration.
+    - CSRF protection (though SameSite cookies help).
 
-### ❌ Not Implemented (7/15)
-- OAuth 2.0 / SSO ❌
-- File Storage (AWS S3/DigitalOcean) ❌
-- Redis & BullMQ ❌
-- Analytics (Recharts/Chart.js) ❌
-- MOOCs Integration ❌
-- Digilocker Integration ❌
-- AICTE Integration ❌
+## 💡 Recommendations
 
-## 🔄 Migration Path to Match Document
-
-### Priority 1: Database Migration
-```prisma
-// Change in prisma/schema.prisma
-datasource db {
-  provider = "postgresql"  // Instead of "sqlite"
-  url      = env("DATABASE_URL")
-}
-```
-
-### Priority 2: Authentication Upgrade
-- Implement OAuth 2.0 providers (Google, Microsoft)
-- Add SSO support
-- Keep JWT as fallback
-
-### Priority 3: Infrastructure
-- Set up Redis for caching
-- Implement BullMQ for background jobs
-- Configure AWS S3 or DigitalOcean Spaces
-
-### Priority 4: Analytics
-- Install Recharts or Chart.js
-- Create analytics dashboards
-- Implement real-time metrics
-
-### Priority 5: Integrations
-- MOOCs API integration
-- NEP credit mapping system
-- Digilocker integration
-- AICTE integration
-
-## Current Status: ~40% Complete
-
-The core functionality is implemented, but several advanced features from the document are missing. The foundation is solid and ready for expansion.
-
+1.  **Database Migration:** Switch `schema.prisma` to `postgresql` to match the requirement and ensure compatibility with Supabase.
+2.  **File Storage:** Implement an S3-compatible storage provider (Supabase Storage or R2) immediately if deploying to Render, as local files will persist only temporarily.
+3.  **Testing:** Initialize Jest and Supertest to begin writing backend tests.
+4.  **Mobile App:** Initialize the Expo project if a mobile app is required.

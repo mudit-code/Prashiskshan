@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { api } from '../../lib/api';
+import { api, API_URL } from '../../lib/api';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUser, FaUniversity, FaMapMarkerAlt, FaFileContract, FaArrowRight, FaArrowLeft, FaCheckCircle, FaSpinner } from 'react-icons/fa';
@@ -270,13 +270,13 @@ const CollegeProfileForm: React.FC<CollegeProfileFormProps> = ({ onSkip }) => {
                     <p className="mb-2 font-medium">ID Proof Upload</p>
                     <p className="text-xs text-gray-500 mb-4">Faculty ID / Govt ID (&lt;100KB)</p>
                     <input type="file" onChange={(e) => setIdProof(e.target.files?.[0] || null)} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
-                    {initialData?.idProofUrl && <p className="text-xs text-green-600 mt-2">Current: <a href={`http://localhost:5000${initialData.idProofUrl}`} target="_blank" rel="noreferrer" className="underline">View</a></p>}
+                    {initialData?.idProofUrl && <p className="text-xs text-green-600 mt-2">Current: <a href={`${API_URL}${initialData.idProofUrl.startsWith('/') ? '' : '/'}${initialData.idProofUrl}`} target="_blank" rel="noreferrer" className="underline">View</a></p>}
                 </div>
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-indigo-500 transition-colors">
                     <p className="mb-2 font-medium">Authorization Letter</p>
                     <p className="text-xs text-gray-500 mb-4">Stamp + Principal Sign (&lt;200KB)</p>
                     <input type="file" onChange={(e) => setAuthLetter(e.target.files?.[0] || null)} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
-                    {initialData?.authLetterUrl && <p className="text-xs text-green-600 mt-2">Current: <a href={`http://localhost:5000${initialData.authLetterUrl}`} target="_blank" rel="noreferrer" className="underline">View</a></p>}
+                    {initialData?.authLetterUrl && <p className="text-xs text-green-600 mt-2">Current: <a href={`${API_URL}${initialData.authLetterUrl.startsWith('/') ? '' : '/'}${initialData.authLetterUrl}`} target="_blank" rel="noreferrer" className="underline">View</a></p>}
                 </div>
             </div>
         </div>

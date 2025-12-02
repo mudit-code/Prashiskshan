@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export const applyForInternship = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user.userId;
+        const userId = (req as any).user.id;
         const { internshipId, coverLetter } = req.body;
 
         // Handle file upload (resume)
@@ -56,7 +56,7 @@ export const applyForInternship = async (req: Request, res: Response) => {
 
 export const getInternshipApplications = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user.userId;
+        const userId = (req as any).user.id;
         const { internshipId } = req.params;
 
         // Verify the internship belongs to the employer
@@ -102,7 +102,7 @@ export const getInternshipApplications = async (req: Request, res: Response) => 
 
 export const updateApplicationStatus = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user.userId;
+        const userId = (req as any).user.id;
         const { applicationId } = req.params;
         const { status } = req.body; // "Accepted", "Rejected"
 
@@ -145,7 +145,7 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
 
 export const getStudentApplications = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user.userId;
+        const userId = (req as any).user.id;
         const applications = await prisma.application.findMany({
             where: { studentId: userId },
             include: {
@@ -163,5 +163,45 @@ export const getStudentApplications = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Get student applications error:', error);
         res.status(500).json({ error: 'Failed to fetch applications' });
+    }
+};
+
+export const requestNOC = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user.id;
+        const { applicationId } = req.params;
+
+        const application = await prisma.application.findUnique({
+            where: { id: Number(applicationId) },
+            include: { internship: true }
+        });
+
+        if (!application) {
+            return res.status(404).json({ error: 'Application not found' });
+        }
+
+        if (application.studentId !== userId) {
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+
+        if (application.status !== 'Accepted') {
+            return res.status(400).json({ error: 'You can only request NOC for accepted internships' });
+        }
+
+        if (application.nocStatus) {
+            return res.status(400).json({ error: `NOC already ${application.nocStatus}` });
+        }
+
+        const updatedApplication = await prisma.application.update({
+            where: { id: Number(applicationId) },
+            data: {
+                nocStatus: 'Requested'
+            }
+        });
+
+        res.json(updatedApplication);
+    } catch (error) {
+        console.error('Request NOC error:', error);
+        res.status(500).json({ error: 'Failed to request NOC' });
     }
 };

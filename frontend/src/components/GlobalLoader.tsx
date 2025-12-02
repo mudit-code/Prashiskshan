@@ -1,14 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface LoadingContextType {
     isLoading: boolean;
+    targetUrl: string | null;
     setLoading: (loading: boolean) => void;
 }
 
 const LoadingContext = createContext<LoadingContextType>({
     isLoading: false,
+    targetUrl: null,
     setLoading: () => { },
 });
 
@@ -16,41 +17,48 @@ export const useLoading = () => useContext(LoadingContext);
 
 export const LoadingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isLoading, setLoading] = useState(false);
+    const [targetUrl, setTargetUrl] = useState<string | null>(null);
     const router = useRouter();
 
     useEffect(() => {
-        const handleStart = () => setLoading(true);
-        const handleComplete = () => setLoading(false);
+        const handleStart = (url: string) => {
+            if (url !== router.asPath) {
+                setTargetUrl(url);
+                setLoading(true);
+            }
+        };
+
+        const handleComplete = (url: string) => {
+            if (url === router.asPath) {
+                setLoading(false);
+                setTargetUrl(null);
+            }
+            // Fallback to ensure loading stops
+            setTimeout(() => {
+                setLoading(false);
+                setTargetUrl(null);
+            }, 500);
+        };
+
+        const handleError = () => {
+            setLoading(false);
+            setTargetUrl(null);
+        };
 
         router.events.on('routeChangeStart', handleStart);
         router.events.on('routeChangeComplete', handleComplete);
-        router.events.on('routeChangeError', handleComplete);
+        router.events.on('routeChangeError', handleError);
 
         return () => {
             router.events.off('routeChangeStart', handleStart);
             router.events.off('routeChangeComplete', handleComplete);
-            router.events.off('routeChangeError', handleComplete);
+            router.events.off('routeChangeError', handleError);
         };
     }, [router]);
 
     return (
-        <LoadingContext.Provider value={{ isLoading, setLoading }}>
+        <LoadingContext.Provider value={{ isLoading, targetUrl, setLoading }}>
             {children}
-            <AnimatePresence>
-                {isLoading && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[9999] flex items-center justify-center bg-white bg-opacity-80 backdrop-blur-sm"
-                    >
-                        <div className="flex flex-col items-center">
-                            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-                            <p className="text-blue-600 font-semibold animate-pulse">Loading...</p>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
         </LoadingContext.Provider>
     );
 };

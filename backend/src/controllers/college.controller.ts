@@ -237,3 +237,89 @@ export const getAllColleges = async (_req: Request, res: Response) => {
         res.status(500).json({ error: 'Could not fetch colleges' });
     }
 };
+
+export const getNOCRequests = async (req: Request, res: Response) => {
+    const { user } = req;
+
+    if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const applications = await prisma.application.findMany({
+            where: {
+                student: {
+                    collegeId: user.id
+                },
+                nocStatus: { not: null }
+            },
+            include: {
+                student: {
+                    select: {
+                        name: true,
+                        email: true,
+                        studentProfile: {
+                            select: {
+                                rollNo: true,
+                                course: true,
+                                branch: true,
+                                year: true
+                            }
+                        }
+                    }
+                },
+                internship: {
+                    select: {
+                        title: true,
+                        postedBy: {
+                            select: {
+                                companyName: true
+                            }
+                        },
+                        credits: true
+                    }
+                }
+            }
+        });
+
+        res.json(applications);
+    } catch (error) {
+        logger.error(error);
+        res.status(500).json({ error: 'Could not fetch NOC requests' });
+    }
+};
+
+export const updateNOCStatus = async (req: Request, res: Response) => {
+    const { user } = req;
+    const { applicationId } = req.params;
+    const { status } = req.body; // "Approved" or "Rejected"
+
+    if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!['Approved', 'Rejected'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    try {
+        const application = await prisma.application.findUnique({
+            where: { id: Number(applicationId) },
+            include: { student: true }
+        });
+
+        if (!application || application.student.collegeId !== user.id) {
+            return res.status(404).json({ error: 'Application not found or student does not belong to your college' });
+        }
+
+        const updatedApplication = await prisma.application.update({
+            where: { id: Number(applicationId) },
+            data: { nocStatus: status }
+        });
+
+        res.json(updatedApplication);
+    } catch (error) {
+        logger.error(error);
+        res.status(500).json({ error: 'Could not update NOC status' });
+    }
+};
